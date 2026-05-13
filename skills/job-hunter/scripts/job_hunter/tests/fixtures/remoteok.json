@@ -1,0 +1,40 @@
+[
+  { "legal": "this is metadata", "disclaimer": "skip me" },
+  {
+    "id": "abc123",
+    "slug": "nubank-senior-android-engineer",
+    "company": "Nubank",
+    "position": "Senior Android Engineer",
+    "tags": ["android", "kotlin", "mobile"],
+    "location": "Worldwide",
+    "salary_min": 80000,
+    "salary_max": 120000,
+    "date": "2026-05-10T12:00:00+00:00",
+    "url": "https://remoteok.com/remote-jobs/abc123",
+    "description": "<p>Build Android apps with Kotlin Multiplatform.</p>"
+  },
+  {
+    "id": "def456",
+    "slug": "acme-junior-android",
+    "company": "Acme",
+    "position": "Junior Android Developer",
+    "tags": ["android"],
+    "location": "Worldwide",
+    "date": "2026-05-11T09:00:00+00:00",
+    "url": "https://remoteok.com/remote-jobs/def456",
+    "description": "Entry-level role."
+  },
+  {
+    "id": "ghi789",
+    "slug": "globalcorp-kmp-engineer",
+    "company": "GlobalCorp",
+    "position": "Kotlin Multiplatform Engineer",
+    "tags": ["kotlin", "kmp"],
+    "location": "Brazil / Remote",
+    "salary_min": 90000,
+    "salary_max": null,
+    "date": "2026-05-12T08:00:00+00:00",
+    "url": "https://remoteok.com/remote-jobs/ghi789",
+    "description": "Senior KMP role"
+  }
+]

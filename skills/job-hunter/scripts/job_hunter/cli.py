@@ -1,17 +1,21 @@
-"""Typer CLI entrypoint. Phase 2 wires `init`, `sync`, `doctor`, `lint`."""
+"""Typer CLI entrypoint. Phase 3 adds `discover`."""
 
 from __future__ import annotations
 
+import asyncio
 import subprocess
 from datetime import datetime
 from pathlib import Path
 
 import typer
+from dotenv import load_dotenv
 from rich.console import Console
 
 from . import __version__, healthcheck, tracking_md
 from .db import run_migrations, session
+from .discover import load_query, run_discover
 from .paths import resolve
+from .sources import REGISTRY, SourceError, get_source
 
 app = typer.Typer(
     name="job-hunter",
@@ -103,6 +107,58 @@ def sync(
     with session(paths) as sess:
         tracking_md.regenerate(paths, sess, now=now)
     console.print(f"Synced tracking.md and per-job files to {paths.tracking_dir}")
+
+
+@app.command()
+def discover(
+    source: str = typer.Option(..., "--source", help="Source name (see REGISTRY in sources/)."),
+    query_override: str | None = typer.Option(
+        None, "--query", help="Comma-separated role keywords overriding profile.yaml."
+    ),
+    no_md_sync: bool = typer.Option(
+        False, "--no-md-sync", help="Skip markdown regen until end of batch."
+    ),
+) -> None:
+    """Discover postings from a source. Upserts jobs, creates Application rows."""
+    paths = resolve()
+    paths.ensure()
+    run_migrations(paths)
+
+    if source not in REGISTRY:
+        console.print(f"[red]unknown source[/red]: {source}")
+        console.print(f"available: {', '.join(sorted(REGISTRY))}")
+        raise typer.Exit(2)
+
+    src = get_source(source)
+    query = load_query(paths)
+    if query_override:
+        query.roles = [tok.strip() for tok in query_override.split(",") if tok.strip()]
+
+    # Load PII env (e.g. LINKEDIN_LI_AT) into this process. Never print contents.
+    if paths.secrets_env.exists():
+        load_dotenv(paths.secrets_env, override=False)
+
+    try:
+        with session(paths) as sess:
+            report, new_ids = asyncio.run(run_discover(src, query, paths, sess))
+    except SourceError as e:
+        console.print(f"[red]source error[/red]: {e}")
+        raise typer.Exit(1) from e
+
+    console.print(
+        f"[bold]{source}[/bold]: discovered={report.discovered} new={report.new} "
+        f"updated={report.updated} failed={report.failed}"
+    )
+    if report.errors:
+        for err in report.errors[:5]:
+            console.print(f"  [yellow]err[/yellow] {err['where']}: {err['message']}")
+        if len(report.errors) > 5:
+            console.print(f"  ...and {len(report.errors) - 5} more (see run report)")
+
+    if not no_md_sync:
+        now = tracking_md.fixed_now_from_env() or datetime.now(tracking_md.DEFAULT_TZ)
+        with session(paths) as sess:
+            tracking_md.regenerate(paths, sess, now=now)
 
 
 @app.command()
