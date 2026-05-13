@@ -9,7 +9,7 @@
       "name": "job-hunter",
       "source": "./skills/job-hunter",
       "description": "Discover, track, and assist with senior mobile / Android / Kotlin Multiplatform job applications. PII-safe form filling with shadow and auto modes. Self-improving adapters for Gupy, Greenhouse, Lever, Workday, Ashby and more.",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "homepage": "https://github.com/lomartins/job-hunter-skill",
       "license": "Apache-2.0",
       "keywords": ["jobs", "android", "kotlin-multiplatform", "scraping", "playwright", "brazil"],

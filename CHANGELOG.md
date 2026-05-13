@@ -6,6 +6,47 @@ The plugin's version is the source of truth and is mirrored in `.claude-plugin/m
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-13
+
+### Added (Phase 5: apply + learn logic)
+- `job_hunter.apply` — pure-Python core of the form runner, testable
+  without a browser:
+  - `evaluate_auto_gates()` enforces the 5 conditions for auto mode.
+  - `check_no_pii_in_paths()`, `check_all_required_filled()`,
+    `check_resume_matches_locale()` pre-submit checks.
+  - `plan_for_url()` matches adapter + builds FieldPlan from URL.
+  - `is_tty_available()` policy: shadow needs a TTY, headless aborts to
+    `aborted_for_review`.
+  - `confirm_submit_blocking()` y/N/edit prompt; `cooldown()` countdown.
+- `job_hunter.learn` — adapter learner:
+  - `compute_signature()` deterministic 16-hex platform signature from
+    form class list + framework hint + sorted input names + URL path
+    template (digits→`:id`, UUIDs→`:uuid`).
+  - `match_known_ats()` host-pattern + DOM-hint match against the 10
+    known ATSes.
+  - `infer_source_for_input()` label-dictionary match (BR + EN) with
+    token-overlap score.
+  - `draft_adapter_from_dom()` produces a YAML-serializable draft;
+    unknown inputs marked `source: TODO`.
+  - `save_inbox_draft()` writes to `$XDG_DATA_HOME/job-hunter/adapters_inbox/`.
+
+The actual Playwright runner (browser navigate / fill / screenshot / HAR)
+is referenced from apply.py and will be wired in Phase 6 alongside the
+CLI verbs. All of the substantive logic above is unit-tested.
+
+### Test coverage (+20, 74 total)
+- Auto-gate evaluator: all-pass case + each blocker isolated.
+- Pre-submit checks: required-fill ok/missing, PII scan clean/leaky,
+  resume locale (pt/en/no-resume).
+- `plan_for_url`: gupy match + unknown-URL no-match path.
+- Signature: stable across calls, differs for different inputs.
+- `match_known_ats` for all 5 bundled + miss.
+- `infer_source_for_input` matches CPF via "cpf"/"documento", email via
+  Portuguese placeholder, returns None on unknown.
+- `draft_adapter_from_dom` against synthetic BR-labeled form correctly
+  infers CPF source via field_labels.yaml.
+- `save_inbox_draft` writes YAML to adapters_inbox/.
+
 ## [0.4.0] - 2026-05-13
 
 ### Added (Phase 4: adapters + resolver)

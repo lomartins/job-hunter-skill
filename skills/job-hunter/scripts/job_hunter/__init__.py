@@ -1,3 +1,3 @@
 """job-hunter: PII-safe job discovery and application tracking."""
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
