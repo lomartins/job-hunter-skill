@@ -1,6 +1,6 @@
 [project]
 name = "job-hunter"
-version = "0.1.0"
+version = "0.2.0"
 description = "Discover, track, and assist with senior mobile / Android / Kotlin Multiplatform job applications. PII-safe form filling."
 readme = "README.md"
 license = { text = "Apache-2.0" }

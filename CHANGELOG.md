@@ -6,6 +6,28 @@ The plugin's version is the source of truth and is mirrored in `.claude-plugin/m
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-13
+
+### Added (Phase 2: data layer + first CLI verbs)
+- `job_hunter.paths` with XDG resolution honoring `JOB_HUNTER_HOME_OVERRIDE`.
+- SQLModel definitions for `Job`, `Application`, `StageHistory`, `SiteAdapter`,
+  `FillAttempt`, `CoverLetterApproval` in `job_hunter.models`.
+- `job_hunter.db` with migration runner (`_migrations` table, idempotent).
+- Migration `001_initial.sql` (full schema per spec).
+- `job_hunter.tracking_md`: deterministic markdown generator, atomic write,
+  notes-block preservation, ASCII slug.
+- `install_hook.sh` real implementation (idempotent, never clobbers).
+- `healthcheck.py` real checks (Python version, uv, Playwright, XDG dirs,
+  secrets perms, gh auth).
+- CLI verbs: `init`, `sync`, `doctor`, `lint`, `info`.
+
+### Test coverage
+- XDG path resolution across env-set / unset matrix.
+- Migration idempotency + table presence + FK pragma.
+- Markdown determinism (byte-identity), notes preservation.
+- install_hook idempotency, no-clobber, perm hardening.
+- CLI verbs smoke tests.
+
 ## [0.1.0] - 2026-05-13
 
 ### Added

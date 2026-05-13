@@ -1,16 +1,11 @@
 #!/usr/bin/env bash
 # Idempotent bootstrap for the `job-hunter` skill's XDG runtime layout.
-#
-# Phase 1: prints what would be done and exits 0. The real implementation
-# (Phase 2) will:
-#   - mkdir -p the three XDG roots
-#   - copy assets/personal.env.example -> $XDG_CONFIG_HOME/job-hunter/secrets/personal.env
-#     ONLY if missing (never clobber)
-#   - copy profile.yaml.example -> profile.yaml ONLY if missing
-#   - chmod 600 secrets/personal.env
-#   - print next-steps for the user (edit the files, install Playwright)
-#
 # Safe to run repeatedly. Never deletes user data. Never reads secrets.
+#
+# Called by `job init`. Also runnable directly:
+#   bash skills/job-hunter/scripts/install_hook.sh
+#
+# Honours JOB_HUNTER_HOME_OVERRIDE (used by tests) — same layout, different root.
 
 set -euo pipefail
 
@@ -18,21 +13,59 @@ XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 
-CONFIG_DIR="${XDG_CONFIG_HOME}/job-hunter"
-DATA_DIR="${XDG_DATA_HOME}/job-hunter"
-STATE_DIR="${XDG_STATE_HOME}/job-hunter"
+if [[ -n "${JOB_HUNTER_HOME_OVERRIDE:-}" ]]; then
+    CONFIG_DIR="${JOB_HUNTER_HOME_OVERRIDE}/config/job-hunter"
+    DATA_DIR="${JOB_HUNTER_HOME_OVERRIDE}/data/job-hunter"
+    STATE_DIR="${JOB_HUNTER_HOME_OVERRIDE}/state/job-hunter"
+else
+    CONFIG_DIR="${XDG_CONFIG_HOME}/job-hunter"
+    DATA_DIR="${XDG_DATA_HOME}/job-hunter"
+    STATE_DIR="${XDG_STATE_HOME}/job-hunter"
+fi
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+ASSETS_DIR="$(cd -- "${SCRIPT_DIR}/../assets" && pwd)"
+
+mkdir -p \
+    "${CONFIG_DIR}/secrets" \
+    "${DATA_DIR}/tracking" \
+    "${DATA_DIR}/adapters_inbox" \
+    "${DATA_DIR}/adapters_user" \
+    "${DATA_DIR}/files" \
+    "${DATA_DIR}/runs" \
+    "${STATE_DIR}/logs"
+
+# Copy templates only if absent (never clobber user edits).
+declare -A TEMPLATES=(
+    ["${ASSETS_DIR}/personal.env.example"]="${CONFIG_DIR}/secrets/personal.env"
+    ["${ASSETS_DIR}/profile.yaml.example"]="${CONFIG_DIR}/profile.yaml"
+)
+
+for src in "${!TEMPLATES[@]}"; do
+    dst="${TEMPLATES[$src]}"
+    if [[ -e "${dst}" ]]; then
+        echo "  skip (exists): ${dst}"
+        continue
+    fi
+    cp -- "${src}" "${dst}"
+    echo "  copied: ${src} -> ${dst}"
+done
+
+# Lock down the secrets file. We never read its contents.
+if [[ -f "${CONFIG_DIR}/secrets/personal.env" ]]; then
+    chmod 600 "${CONFIG_DIR}/secrets/personal.env"
+fi
 
 cat <<EOF
-job-hunter install hook (phase 1 stub).
+job-hunter install hook complete.
 
-Would create:
-  - ${CONFIG_DIR}/{secrets,}
-  - ${DATA_DIR}/{tracking,adapters_inbox,adapters_user,files,runs}
-  - ${STATE_DIR}/logs
+Config dir : ${CONFIG_DIR}
+Data dir   : ${DATA_DIR}
+State dir  : ${STATE_DIR}
 
-Would copy templates (if absent):
-  - assets/personal.env.example -> ${CONFIG_DIR}/secrets/personal.env  (then chmod 600)
-  - assets/profile.yaml.example -> ${CONFIG_DIR}/profile.yaml
-
-Real implementation lands in phase 2. Run `job init` once the CLI ships.
+Next steps:
+  1. \$EDITOR ${CONFIG_DIR}/profile.yaml         # roles, locations, public links (no PII)
+  2. \$EDITOR ${CONFIG_DIR}/secrets/personal.env # PII; chmod 600 already applied
+  3. playwright install chromium                 # if not already installed
+  4. job doctor                                   # validate setup
 EOF

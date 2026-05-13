@@ -68,6 +68,10 @@ Spec: 1 req per 12–25s jittered. We implement a global token-bucket per `domai
 
 `profile.yaml` keyspace is documented in `assets/profile.yaml.example`. `secret.*` keyspace is exactly what `assets/personal.env.example` defines — `secret.cpf`, `secret.rg`, `secret.phone`, `secret.address`, `secret.birth_date`, `secret.salary_expectation_brl`, `secret.bank_account`, `LINKEDIN_LI_AT` (this last is access, not identity, but lives in the same file because it's session credentials). Any adapter referencing a `secret.X` not present in the env errors at fill-plan time, never at submit time.
 
+### 12a. Migrations live inside the python package
+
+Spec puts `migrations/` at `scripts/migrations/` (sibling of `scripts/job_hunter/`). We moved them to `scripts/job_hunter/migrations/` so they ride along in the installed wheel (`hatchling` only packages files under `packages =`). `db.py` resolves them via `importlib.resources`. Visible in source layout via the package path; functionally equivalent to the spec.
+
 ### 12. Test DB strategy
 
 Tests get a fresh temp dir via `tmp_path` fixture, with `JOB_HUNTER_HOME_OVERRIDE` env var pointing into it. `paths.py` honors that override before consulting `XDG_*` for tests' benefit; it's documented in SKILL.md as a test hook and in `references/decisions.md`. No prod path uses it.
