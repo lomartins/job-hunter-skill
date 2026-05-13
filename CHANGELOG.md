@@ -6,6 +6,35 @@ The plugin's version is the source of truth and is mirrored in `.claude-plugin/m
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-05-13
+
+### Added (Phase 6: remaining CLI verbs)
+- `job list [--stage] [--source] [--since]` — Rich table of applications.
+- `job show <id>` — full detail + stage history for one application.
+- `job queue <id>` — DISCOVERED → QUEUED transition; idempotent.
+- `job stage <id> --to STAGE [--note]` — generic transition with history record.
+- `job apply <id> [--mode] [--dry-run] [--i-understand]` — full plan
+  resolution + Field-plan rendering; `--dry-run` walks the entire plan
+  without a browser (live Playwright fill returns a clear "wired in
+  Phase 6+" message to keep the command shape complete).
+- `job approve <id>` — reserved for the live-fill path.
+- `job review` — surfaces paused adapters + adapters_inbox drafts.
+- `job report [--weekly]` — pipeline stage counts.
+- `job adapter list` — bundled + user adapters, origin marker, auto-eligible.
+- `job adapter promote <sig>` — validates inbox draft + moves to user dir +
+  registers in `site_adapters`.
+- `job adapter test <sig> --url URL` — dry-run match.
+- `job adapter mark-auto-eligible <sig>` — flips the YAML flag on a user
+  adapter (bundled stays conservative).
+- `job adapter contribute <sig>` — gh-based PR helper (skeleton).
+
+### Test coverage (+16, 90 total)
+- list, show (found + missing), queue idempotent, stage (valid + invalid),
+  adapter list (5 bundled), adapter test (match + non-match), adapter
+  promote (inbox → user dir + DB row), mark-auto-eligible flips flag,
+  review empty + with inbox drafts, report stage counts, apply --dry-run
+  matches Gupy URL with field plan rendered + reports missing required.
+
 ## [0.5.0] - 2026-05-13
 
 ### Added (Phase 5: apply + learn logic)
