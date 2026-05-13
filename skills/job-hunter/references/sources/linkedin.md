@@ -2,7 +2,21 @@
 
 Authenticated via the `li_at` session cookie. Highest-value source; also highest-rate-limit risk.
 
-## Cookie capture
+## Recommended setup: persistent Chrome profile
+
+LinkedIn aggressively invalidates `li_at` cookies that arrive with a fresh fingerprint each run (different User-Agent, different TLS hash, no JSESSIONID). The skill bypasses this by reusing a **persistent Chromium profile** at `$XDG_DATA_HOME/job-hunter/chrome-profiles/linkedin/` — same fingerprint, accumulated session cookies, looks like a returning real user.
+
+One-time setup:
+
+```bash
+job-hunter linkedin-login         # opens a headed browser; you sign in once
+```
+
+After that, `job-hunter discover --source linkedin` reuses the profile. The cookie env var becomes a fallback, only consulted on the first run before the profile exists.
+
+If LinkedIn ever logs you out (security alert, password change), re-run `job-hunter linkedin-login`.
+
+## Cookie capture (fallback / first run)
 
 1. Log in to linkedin.com in Firefox/Chrome.
 2. Devtools -> Storage/Application -> Cookies -> `https://www.linkedin.com`.

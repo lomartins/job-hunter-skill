@@ -720,6 +720,77 @@ def report_cmd(weekly: bool = typer.Option(False, "--weekly")) -> None:
     console.print(f"\nactive: {active}  terminal: {terminal}  total: {len(total_apps)}")
 
 
+@app.command(name="linkedin-login")
+def linkedin_login_cmd(
+    timeout: int = typer.Option(
+        180, "--timeout", help="Seconds to wait for the user to finish logging in."
+    ),
+) -> None:
+    """Open a headed Chromium pointed at LinkedIn login; save the session.
+
+    Use this when LinkedIn invalidates `LINKEDIN_LI_AT` repeatedly. After you
+    sign in (and solve any captcha) the persistent Chromium profile at
+    `$XDG_DATA_HOME/job-hunter/chrome-profiles/linkedin/` keeps your session
+    cookies + JSESSIONID, and subsequent `discover --source linkedin` runs
+    reuse it. LinkedIn treats the profile as a returning user and stops
+    invalidating tokens.
+    """
+    paths = resolve()
+    paths.ensure()
+    profile_dir = paths.chrome_profile_linkedin
+    profile_dir.mkdir(parents=True, exist_ok=True)
+
+    async def _run() -> None:
+        try:
+            from playwright.async_api import async_playwright
+        except ImportError as e:
+            console.print(f"[red]Playwright not available[/red]: {e}")
+            raise typer.Exit(1) from e
+
+        async with async_playwright() as p:
+            context = await p.chromium.launch_persistent_context(
+                user_data_dir=str(profile_dir),
+                headless=False,
+                user_agent=(
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/130.0 Safari/537.36"
+                ),
+                locale="en-US",
+                viewport={"width": 1280, "height": 800},
+            )
+            try:
+                page = await context.new_page()
+                await page.goto("https://www.linkedin.com/login", wait_until="domcontentloaded")
+                console.print(
+                    f"[bold]Sign in to LinkedIn in the browser window[/bold] — you have "
+                    f"{timeout}s. Session saves to:\n  {profile_dir}"
+                )
+                deadline = asyncio.get_event_loop().time() + timeout
+                while asyncio.get_event_loop().time() < deadline:
+                    if (
+                        page.url.startswith("https://www.linkedin.com/")
+                        and "/login" not in page.url
+                        and "/checkpoint" not in page.url
+                        and "/uas/login" not in page.url
+                    ):
+                        break
+                    await asyncio.sleep(2)
+                else:
+                    console.print(
+                        "[yellow]Timed out before login completed.[/yellow] "
+                        "Re-run with --timeout 300 if needed."
+                    )
+                    raise typer.Exit(1)
+                console.print(
+                    f"[green]Logged in.[/green] Session saved to {profile_dir}. "
+                    "Future `job-hunter discover --source linkedin` runs will reuse it."
+                )
+            finally:
+                await context.close()
+
+    asyncio.run(_run())
+
+
 @app.command()
 def doctor() -> None:
     """Validate install, paths, perms, deps."""

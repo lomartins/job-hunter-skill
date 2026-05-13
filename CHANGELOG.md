@@ -6,6 +6,32 @@ The plugin's version is the source of truth and is mirrored in `.claude-plugin/m
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-05-13
+
+### Fixed
+- **LinkedIn no longer invalidates the session every run.** The 0.9.2
+  headless-Playwright path launched a fresh Chromium instance for each
+  request, producing a different fingerprint each time. LinkedIn read
+  that as "new browser, repeated cookie" and invalidated `li_at`.
+- `_fetch_via_playwright` now uses `launch_persistent_context` against
+  `$XDG_DATA_HOME/job-hunter/chrome-profiles/linkedin/`. Same profile dir
+  every run → stable fingerprint, accumulating session cookies
+  (JSESSIONID, bcookie, etc.) → LinkedIn treats it as a returning user.
+- First-run bootstrap: if profile is empty, `LINKEDIN_LI_AT` env var
+  seeds it; LinkedIn then issues fresh session cookies that the profile
+  keeps.
+
+### Added
+- `job-hunter linkedin-login` CLI verb. Opens a headed Chromium pointed
+  at LinkedIn login; user signs in interactively (captcha-solving etc.).
+  The session saves into the persistent profile, after which all
+  `discover --source linkedin` runs work without ever needing the env
+  var again. Recommended for users hit by aggressive token invalidation.
+- `Paths.chrome_profile_linkedin` property
+  (`$XDG_DATA_HOME/job-hunter/chrome-profiles/linkedin/`).
+- `references/sources/linkedin.md` documents the recommended persistent-
+  profile setup as primary; env-var capture is now the fallback.
+
 ## [0.9.2] - 2026-05-13
 
 ### Fixed

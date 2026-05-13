@@ -79,7 +79,19 @@ class LinkedInSource:
         return resp.text
 
     async def _fetch_via_playwright(self, url: str) -> str:
-        """Render LinkedIn with cookie. Returns the post-render HTML."""
+        """Render LinkedIn with cookie. Returns the post-render HTML.
+
+        Uses a **persistent** Chromium profile at
+        `$XDG_DATA_HOME/job-hunter/chrome-profiles/linkedin/` so the same
+        fingerprint + cookies survive between runs. LinkedIn aggressively
+        invalidates `li_at` when each request comes from a fresh fingerprint;
+        the persistent profile fixes this.
+
+        First-run bootstrap: if the profile has no `li_at`, we inject from the
+        env var and save it. On every run after, the profile's stored cookies
+        are used (and LinkedIn's session-extension cookies — JSESSIONID,
+        bcookie — accumulate naturally).
+        """
         try:
             from playwright.async_api import async_playwright
         except ImportError as e:
@@ -87,30 +99,42 @@ class LinkedInSource:
                 "Playwright not installed. `playwright install chromium` then retry."
             ) from e
 
-        cookie_value = self._cookie()
+        from ..paths import resolve
+
+        paths = resolve()
+        profile_dir = paths.chrome_profile_linkedin
+        profile_dir.mkdir(parents=True, exist_ok=True)
+        first_run = not (profile_dir / "Default" / "Cookies").exists()
+
+        cookie_value = self._cookie() if first_run else None
+
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
+            context = await p.chromium.launch_persistent_context(
+                user_data_dir=str(profile_dir),
+                headless=True,
+                user_agent=(
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/130.0 Safari/537.36"
+                ),
+                locale="en-US",
+                viewport={"width": 1280, "height": 800},
+            )
             try:
-                context = await browser.new_context(
-                    user_agent=(
-                        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                        "(KHTML, like Gecko) Chrome/130.0 Safari/537.36"
-                    ),
-                    locale="en-US",
-                )
-                await context.add_cookies(
-                    [
-                        {
-                            "name": "li_at",
-                            "value": cookie_value,
-                            "domain": ".linkedin.com",
-                            "path": "/",
-                            "httpOnly": True,
-                            "secure": True,
-                            "sameSite": "None",
-                        }
-                    ]
-                )
+                if first_run and cookie_value:
+                    await context.add_cookies(
+                        [
+                            {
+                                "name": "li_at",
+                                "value": cookie_value,
+                                "domain": ".linkedin.com",
+                                "path": "/",
+                                "httpOnly": True,
+                                "secure": True,
+                                "sameSite": "None",
+                            }
+                        ]
+                    )
+
                 page = await context.new_page()
                 try:
                     await page.goto(url, wait_until="domcontentloaded", timeout=30000)
@@ -119,8 +143,10 @@ class LinkedInSource:
 
                 if "/login" in page.url or "/authwall" in page.url:
                     raise SourceError(
-                        "LinkedIn redirected to login/authwall — cookie expired. "
-                        "Refresh LINKEDIN_LI_AT."
+                        "LinkedIn redirected to login/authwall. Cookie invalid. "
+                        "Refresh LINKEDIN_LI_AT, then delete "
+                        f"{profile_dir} so the next run re-seeds it. "
+                        "Or run `job-hunter linkedin-login` to authenticate interactively."
                     )
 
                 # Wait for cards to materialize. If timeout, parser returns [].
@@ -132,7 +158,7 @@ class LinkedInSource:
                 html: str = await page.content()
                 return html
             finally:
-                await browser.close()
+                await context.close()
 
     async def discover(
         self, query: SearchQuery, client: httpx.AsyncClient

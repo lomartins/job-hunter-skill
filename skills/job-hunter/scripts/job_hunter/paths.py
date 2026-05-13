@@ -88,6 +88,13 @@ class Paths:
     def ratelimit_json(self) -> Path:
         return self.logs_dir / "ratelimit.json"
 
+    @property
+    def chrome_profile_linkedin(self) -> Path:
+        """Persistent Chromium profile for LinkedIn — same fingerprint across
+        runs so LinkedIn doesn't invalidate the session.
+        """
+        return self.data_dir / "chrome-profiles" / "linkedin"
+
     def ensure(self) -> None:
         """Create every directory we expect to exist. Idempotent."""
         for d in (
