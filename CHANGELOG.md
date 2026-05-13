@@ -6,6 +6,28 @@ The plugin's version is the source of truth and is mirrored in `.claude-plugin/m
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-05-13
+
+### Polished (Phase 7: shipping cut)
+- Clean-install E2E verified end-to-end against a fresh `JOB_HUNTER_HOME_OVERRIDE`
+  root: `init` runs install-hook + migrations + doctor; all checks green
+  (Python 3.12, uv, Playwright Chromium, XDG dirs, secrets 0600 + not
+  world-readable, profile.yaml present, gh auth, package version).
+- CI workflow YAML validated.
+- Final tally: 90 passing tests, ruff/ruff-format/mypy clean across 39
+  source files, 74-file PII lint clean, marketplace.json valid.
+
+### Known follow-ups (post-0.7)
+- Live Playwright form-fill path (currently `--dry-run` only).
+- Real cooldown + Ctrl+C handling for auto mode (logic exists, browser hook
+  pending).
+- `--smart-fill` Skyvern/Stagehand integration (gated flag wired, backend
+  not).
+- Per-source scrapers 5–11 (Remotive, WWR, Himalayas, Programathor,
+  Coodesh, Trampos, Arc.dev) — currently raise SourceError with a clear
+  "see references/sources/<name>.md" message.
+- `adapter contribute` PR push via gh.
+
 ## [0.6.0] - 2026-05-13
 
 ### Added (Phase 6: remaining CLI verbs)

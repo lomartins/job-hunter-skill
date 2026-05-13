@@ -105,17 +105,13 @@ def test_adapter_list_shows_5_bundled(populated: paths_mod.Paths) -> None:
 
 
 def test_adapter_test_matching_url(populated: paths_mod.Paths) -> None:
-    r = runner.invoke(
-        app, ["adapter", "test", "gupy", "--url", "https://nubank.gupy.io/jobs/123"]
-    )
+    r = runner.invoke(app, ["adapter", "test", "gupy", "--url", "https://nubank.gupy.io/jobs/123"])
     assert r.exit_code == 0
     assert "match" in r.stdout
 
 
 def test_adapter_test_non_matching_url(populated: paths_mod.Paths) -> None:
-    r = runner.invoke(
-        app, ["adapter", "test", "gupy", "--url", "https://example.com/jobs/1"]
-    )
+    r = runner.invoke(app, ["adapter", "test", "gupy", "--url", "https://example.com/jobs/1"])
     assert r.exit_code == 1
 
 
