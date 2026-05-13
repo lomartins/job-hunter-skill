@@ -12,6 +12,33 @@ Job hunting buried under a hundred tabs? **job-hunter** scrapes job boards, trac
 
 Works for **any tech role** — backend, frontend, mobile, data, ML, infra, devrel, security, design-eng. Drop your role keywords in `profile.yaml` once and the same skill works for a senior platform engineer, a junior data analyst, or a staff designer.
 
+## Webapp
+
+Launched with `job-hunter web` (localhost-only, no auth):
+
+<table>
+  <tr>
+    <td width="50%">
+      <a href="docs/screenshots/jobs.png"><img src="docs/screenshots/jobs.png" alt="Joblist with filter, sort, currency + period selectors" /></a>
+      <p align="center"><b>Joblist</b> — filter, sort, currency + period conversion</p>
+    </td>
+    <td width="50%">
+      <a href="docs/screenshots/tracker.png"><img src="docs/screenshots/tracker.png" alt="Pipeline tracker kanban with drag-and-drop" /></a>
+      <p align="center"><b>Tracker</b> — kanban with drag-and-drop, tag filter</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <a href="docs/screenshots/detail.png"><img src="docs/screenshots/detail.png" alt="Per-job detail page with Claude Code command launcher" /></a>
+      <p align="center"><b>Detail</b> — Claude Code commands, stage/notes, edit fields</p>
+    </td>
+    <td width="50%">
+      <a href="docs/screenshots/metrics.png"><img src="docs/screenshots/metrics.png" alt="Metrics page with daily/weekly application charts" /></a>
+      <p align="center"><b>Metrics</b> — apps per day / week, by stage, by source</p>
+    </td>
+  </tr>
+</table>
+
 ## What you get
 
 - **11 sources out of the box** — LinkedIn, Indeed, Glassdoor, Gupy, RemoteOK, Job na Gringa, Remotive, We Work Remotely, Himalayas, Programathor, Coodesh. New scrapers via a `learn.py` adapter that drafts YAML from any unknown form.
