@@ -467,6 +467,7 @@ def register(app: FastAPI) -> None:
         salary_min: str = Form(default=""),
         salary_max: str = Form(default=""),
         currency: str = Form(default=""),
+        salary_period: str = Form(default=""),
         remote: str = Form(default=""),
     ) -> Response:
         with request.app.state.session_factory() as s:
@@ -475,6 +476,8 @@ def register(app: FastAPI) -> None:
             job.salary_min = _to_int(salary_min)
             job.salary_max = _to_int(salary_max)
             job.currency = currency.strip().upper() or None
+            period_raw = salary_period.strip().lower()
+            job.salary_period = period_raw if period_raw in salary_view.SUPPORTED else None
             if remote == "yes":
                 job.remote = True
             elif remote == "no":

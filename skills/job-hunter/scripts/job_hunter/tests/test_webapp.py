@@ -231,6 +231,87 @@ def test_notes_update_htmx(client: TestClient, job_hunter_home: Path) -> None:
 # ─── field edit (job table) ─────────────────────────────────────────────────
 
 
+def test_edit_fields_sets_salary_period(client: TestClient, job_hunter_home: Path) -> None:
+    jid = _insert_job(job_hunter_home, title="X", company="Y")
+    client.post(
+        f"/jobs/{jid}/fields",
+        data={
+            "location": "Remote",
+            "salary_min": "80",
+            "salary_max": "120",
+            "currency": "usd",
+            "salary_period": "hour",
+            "remote": "yes",
+        },
+        follow_redirects=False,
+    )
+    eng = get_engine(resolve())
+    with Session(eng) as s:
+        from sqlmodel import select
+
+        job = s.exec(select(Job).where(Job.id == jid)).one()
+        assert job.salary_period == "hour"
+        assert job.salary_min == 80
+        assert job.salary_max == 120
+
+
+def test_edit_fields_clears_salary_period_when_empty(
+    client: TestClient, job_hunter_home: Path
+) -> None:
+    jid = _insert_job(job_hunter_home, title="X", company="Y")
+    # Seed with a known period.
+    client.post(
+        f"/jobs/{jid}/fields",
+        data={
+            "location": "Remote",
+            "salary_min": "10000",
+            "salary_max": "12000",
+            "currency": "BRL",
+            "salary_period": "month",
+            "remote": "yes",
+        },
+    )
+    # Now clear by sending empty period.
+    client.post(
+        f"/jobs/{jid}/fields",
+        data={
+            "location": "Remote",
+            "salary_min": "10000",
+            "salary_max": "12000",
+            "currency": "BRL",
+            "salary_period": "",
+            "remote": "yes",
+        },
+    )
+    eng = get_engine(resolve())
+    with Session(eng) as s:
+        from sqlmodel import select
+
+        job = s.exec(select(Job).where(Job.id == jid)).one()
+        assert job.salary_period is None
+
+
+def test_edit_fields_rejects_invalid_period(client: TestClient, job_hunter_home: Path) -> None:
+    jid = _insert_job(job_hunter_home, title="X", company="Y")
+    client.post(
+        f"/jobs/{jid}/fields",
+        data={
+            "location": "Remote",
+            "salary_min": "10000",
+            "currency": "USD",
+            "salary_period": "decade",
+            "remote": "yes",
+        },
+    )
+    eng = get_engine(resolve())
+    with Session(eng) as s:
+        from sqlmodel import select
+
+        job = s.exec(select(Job).where(Job.id == jid)).one()
+        # Invalid → cleared, not stored as-is.
+        assert job.salary_period is None
+
+
 def test_edit_fields(client: TestClient, job_hunter_home: Path) -> None:
     jid = _insert_job(job_hunter_home, title="X", company="Y", salary_min=None, salary_max=None)
     client.post(

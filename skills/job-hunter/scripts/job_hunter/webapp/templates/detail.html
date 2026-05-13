@@ -135,6 +135,16 @@
           <span class="uppercase tracking-wider text-slate-500">CCY</span>
           <input name="currency" value="{{ job.currency or '' }}" maxlength="6" class="rounded-md bg-slate-950 border-slate-700 text-sm font-mono uppercase" />
         </label>
+        <label class="flex flex-col gap-1 text-xs">
+          <span class="uppercase tracking-wider text-slate-500">{{ t("job.salary_period") }}</span>
+          <select name="salary_period" class="rounded-md bg-slate-950 border-slate-700 text-sm">
+            {% set period_labels = {"hour": t("salary_period.hour"), "day": t("salary_period.day"), "month": t("salary_period.month"), "year": t("salary_period.year")} %}
+            <option value="" {% if job.salary_period is none %}selected{% endif %}>{{ t("common.unknown") }}</option>
+            {% for p in salary_period_supported %}
+              <option value="{{ p }}" {% if job.salary_period == p %}selected{% endif %}>{{ period_labels[p] }}</option>
+            {% endfor %}
+          </select>
+        </label>
         <label class="col-span-2 flex flex-col gap-1 text-xs">
           <span class="uppercase tracking-wider text-slate-500">{{ t("job.remote") }}</span>
           <select name="remote" class="rounded-md bg-slate-950 border-slate-700 text-sm">

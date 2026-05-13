@@ -6,6 +6,23 @@ The plugin's version is the source of truth and is mirrored in `.claude-plugin/m
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-05-13
+
+### Added
+- **Salary period dropdown in the job detail "Edit fields" form.** The
+  user can now correct the period when the source guessed wrong
+  (or left it blank), choosing among Hourly / Daily / Monthly / Yearly,
+  plus "—" for unknown.
+- POST `/jobs/<id>/fields` accepts `salary_period`; invalid or missing
+  values clear the column to NULL.
+- i18n: `job.salary_period`, `salary_period.{hour,day,month,year}` in
+  EN + PT-BR.
+
+### Tests
+- 3 new webapp tests: setting period via the form, clearing it back to
+  NULL by submitting empty, and silent fallback to NULL on bogus values.
+  210 total pass.
+
 ## [0.13.0] - 2026-05-13
 
 Salary postings carry a period now (hour / day / month / year) and the
