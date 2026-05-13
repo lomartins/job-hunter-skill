@@ -6,6 +6,21 @@ The plugin's version is the source of truth and is mirrored in `.claude-plugin/m
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-05-13
+
+### Fixed
+- **LinkedIn _fetch now routes through Playwright by default.** The 0.9.1
+  parser fix matched the right selectors but httpx-rendered LinkedIn
+  HTML doesn't contain the cards — they're JS-injected after page load.
+  `LinkedInSource._fetch_via_playwright()` launches local Chromium with
+  `li_at` injected as a cookie, waits for `[data-occludable-job-id]`,
+  returns the post-render HTML to the existing parser.
+- Set `LINKEDIN_USE_HTTP=1` to force the (mostly-broken) httpx path for
+  contract tests.
+- Real-world result against the user's authenticated LinkedIn: 57
+  cards discovered, 11 new rows added to DB on a single discover run
+  with `--query "android,kotlin,mobile"`.
+
 ## [0.9.1] - 2026-05-13
 
 ### Fixed

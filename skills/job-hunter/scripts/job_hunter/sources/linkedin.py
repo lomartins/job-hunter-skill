@@ -3,6 +3,12 @@
 The cookie is read from `os.environ["LINKEDIN_LI_AT"]` after the user's
 `personal.env` has been loaded into the process. NEVER LOGGED.
 
+LinkedIn's job-search UI is a SPA; cards are filled in by JavaScript after
+the initial HTML loads. A plain `httpx` request, even with a valid cookie,
+sees only the SPA shell — zero cards. So we render through a local
+Playwright Chromium instance with the cookie injected. Set
+`LINKEDIN_USE_HTTP=1` to force the (mostly-broken) httpx path for testing.
+
 Hard rate limit: 12-25s jittered between requests (enforced via the shared
 RateLimiter, so concurrent terminals share the budget).
 """
@@ -45,14 +51,23 @@ class LinkedInSource:
             )
         return v
 
+    async def _fetch(self, client: httpx.AsyncClient, url: str) -> str:
+        """Default path: Playwright (handles JS-rendered cards).
+
+        Set `LINKEDIN_USE_HTTP=1` to fall back to plain httpx (useful for
+        contract tests; will see no cards in production).
+        """
+        if os.environ.get("LINKEDIN_USE_HTTP") == "1":
+            return await self._fetch_via_httpx(client, url)
+        return await self._fetch_via_playwright(url)
+
     @retry(
         retry=retry_if_exception_type(httpx.HTTPError),
         stop=stop_after_attempt(3),
         wait=wait_exponential_jitter(initial=2, max=30),
         reraise=True,
     )
-    async def _fetch(self, client: httpx.AsyncClient, url: str) -> str:
-        # Cookie injected per-request; never written to disk or logs.
+    async def _fetch_via_httpx(self, client: httpx.AsyncClient, url: str) -> str:
         cookies = {"li_at": self._cookie()}
         resp = await client.get(url, cookies=cookies)
         if resp.status_code in (403, 429, 999):
@@ -62,6 +77,62 @@ class LinkedInSource:
             )
         resp.raise_for_status()
         return resp.text
+
+    async def _fetch_via_playwright(self, url: str) -> str:
+        """Render LinkedIn with cookie. Returns the post-render HTML."""
+        try:
+            from playwright.async_api import async_playwright
+        except ImportError as e:
+            raise SourceError(
+                "Playwright not installed. `playwright install chromium` then retry."
+            ) from e
+
+        cookie_value = self._cookie()
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            try:
+                context = await browser.new_context(
+                    user_agent=(
+                        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                        "(KHTML, like Gecko) Chrome/130.0 Safari/537.36"
+                    ),
+                    locale="en-US",
+                )
+                await context.add_cookies(
+                    [
+                        {
+                            "name": "li_at",
+                            "value": cookie_value,
+                            "domain": ".linkedin.com",
+                            "path": "/",
+                            "httpOnly": True,
+                            "secure": True,
+                            "sameSite": "None",
+                        }
+                    ]
+                )
+                page = await context.new_page()
+                try:
+                    await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                except Exception as e:
+                    raise SourceError(f"LinkedIn navigation failed: {e}") from e
+
+                if "/login" in page.url or "/authwall" in page.url:
+                    raise SourceError(
+                        "LinkedIn redirected to login/authwall — cookie expired. "
+                        "Refresh LINKEDIN_LI_AT."
+                    )
+
+                # Wait for cards to materialize. If timeout, parser returns [].
+                import contextlib
+
+                with contextlib.suppress(Exception):
+                    await page.wait_for_selector("[data-occludable-job-id]", timeout=15000)
+
+                html: str = await page.content()
+                return html
+            finally:
+                await browser.close()
 
     async def discover(
         self, query: SearchQuery, client: httpx.AsyncClient
