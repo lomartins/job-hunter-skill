@@ -1,0 +1,51 @@
+# Template for $XDG_CONFIG_HOME/job-hunter/profile.yaml
+#
+# Non-PII profile: roles you're hunting, locations you accept, public links.
+# Safe to commit to a personal notes repo. The model reads this file directly.
+
+roles:
+  - Android Engineer
+  - Senior Android
+  - Kotlin Multiplatform
+  - Mobile Platform Engineer
+  - Mobile Tech Lead
+
+seniority:
+  - senior
+  - staff
+  - lead
+
+locations:
+  - Brazil
+  - Remote
+  - LATAM
+  - Worldwide
+
+exclude_keywords:
+  - junior
+  - intern
+  - estagiário
+  - trainee
+
+languages:
+  - pt-BR
+  - en
+
+# Public links. The model can include these in cover letters / form fills
+# without your consent each time. Treat as semi-public.
+links:
+  github: https://github.com/lomartins
+  linkedin: https://www.linkedin.com/in/lomartins
+  portfolio:
+
+# Default behaviour overrides.
+defaults:
+  apply_mode: shadow       # shadow | auto
+  discover_watch_hours: 6
+  preferred_locale: pt-BR
+
+# Public profile blurb passed to `generate.cover_letter`. No PII.
+public_profile_blurb: |
+  Senior Android / KMP engineer based in Brazil, with deep experience shipping
+  cross-platform mobile apps. Open to remote roles worldwide. Strong in
+  Kotlin, Compose Multiplatform, and CI/CD for mobile.

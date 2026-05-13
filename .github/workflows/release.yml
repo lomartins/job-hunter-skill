@@ -1,0 +1,44 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  release-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify tag matches marketplace version
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          tag = os.environ["GITHUB_REF_NAME"].lstrip("v")
+          mf = json.loads(open(".claude-plugin/marketplace.json").read())
+          v = mf["plugins"][0]["version"]
+          if tag != v:
+              sys.exit(f"Tag {tag} != marketplace version {v}")
+          print(f"OK: tag {tag} matches marketplace version {v}")
+          PY
+
+      - name: Verify SKILL.md frontmatter version matches
+        run: |
+          python - <<'PY'
+          import re, sys
+          src = open("skills/job-hunter/SKILL.md").read()
+          m = re.search(r"^version:\s*(\S+)\s*$", src, re.MULTILINE)
+          if not m:
+              sys.exit("SKILL.md: no version field in frontmatter")
+          import json
+          mf = json.loads(open(".claude-plugin/marketplace.json").read())
+          if m.group(1) != mf["plugins"][0]["version"]:
+              sys.exit(f"SKILL.md version {m.group(1)} != marketplace {mf['plugins'][0]['version']}")
+          print(f"OK: SKILL.md and marketplace.json agree on {m.group(1)}")
+          PY

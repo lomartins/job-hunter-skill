@@ -1,0 +1,116 @@
+[project]
+name = "job-hunter"
+version = "0.1.0"
+description = "Discover, track, and assist with senior mobile / Android / Kotlin Multiplatform job applications. PII-safe form filling."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.12,<3.13"
+authors = [{ name = "Luisa Martins", email = "luisamartins.dev@gmail.com" }]
+keywords = ["jobs", "android", "kotlin-multiplatform", "scraping", "playwright", "brazil"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Office/Business",
+  "Topic :: Software Development :: Libraries",
+]
+
+dependencies = [
+  "typer>=0.15.1,<0.16",
+  "rich>=13.9.4,<14",
+  "httpx>=0.28.0,<0.29",
+  "playwright>=1.49.0,<1.50",
+  "sqlmodel>=0.0.22,<0.1",
+  "pydantic>=2.10.0,<3",
+  "pydantic-settings>=2.7.0,<3",
+  "apscheduler>=3.10.4,<4",
+  "tenacity>=9.0.0,<10",
+  "selectolax>=0.3.27,<0.4",
+  "python-dotenv>=1.0.1,<2",
+  "pluggy>=1.5.0,<2",
+  "pyyaml>=6.0.2,<7",
+  "feedparser>=6.0.11,<7",
+  "platformdirs>=4.3.6,<5",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3.0,<9",
+  "pytest-asyncio>=0.24.0,<0.25",
+  "pytest-playwright>=0.5.2,<0.6",
+  "vcrpy>=6.0.2,<7",
+  "ruff>=0.7.0,<0.8",
+  "mypy>=1.13.0,<2",
+  "detect-secrets>=1.5.0,<2",
+  "types-pyyaml>=6.0.12,<7",
+  "freezegun>=1.5.1,<2",
+]
+
+[project.scripts]
+job-hunter = "job_hunter.cli:app"
+job = "job_hunter.cli:app"
+job-hunter-lint = "job_hunter.lint_secret_leaks:main"
+job-hunter-doctor = "job_hunter.healthcheck:main"
+
+[project.urls]
+Homepage = "https://github.com/lomartins/job-hunter-skill"
+Issues = "https://github.com/lomartins/job-hunter-skill/issues"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["skills/job-hunter/scripts/job_hunter"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "skills/job-hunter/scripts",
+  "skills/job-hunter/assets",
+  "skills/job-hunter/SKILL.md",
+  ".claude-plugin",
+  "README.md",
+  "LICENSE",
+  "CHANGELOG.md",
+  "THIRD_PARTY_NOTICES.md",
+]
+
+[tool.uv]
+managed = true
+
+[dependency-groups]
+dev = []
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["skills/job-hunter/scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B", "SIM", "ASYNC", "S"]
+ignore = ["S101", "S603", "S607"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S", "B011"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+files = ["skills/job-hunter/scripts/job_hunter"]
+mypy_path = "skills/job-hunter/scripts"
+
+[[tool.mypy.overrides]]
+module = ["selectolax.*", "feedparser.*", "apscheduler.*", "vcr.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["skills/job-hunter/scripts/job_hunter/tests"]
+pythonpath = ["skills/job-hunter/scripts"]
+addopts = "-ra -q --strict-markers"
+markers = [
+  "playwright: needs Playwright browser installed",
+  "network: hits real network",
+]
