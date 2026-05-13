@@ -1,0 +1,18 @@
+---
+description: Preview the form-fill plan for an application (dry-run by default).
+argument-hint: "<application-id> [--mode shadow|auto]"
+allowed-tools: Bash(job-hunter:*), Bash(job:*), Bash(uv run job-hunter:*)
+---
+
+Preview the application form-fill plan for $ARGUMENTS.
+
+Run `job-hunter apply $ARGUMENTS --dry-run` and display the resulting Field plan table.
+
+Then explain:
+- What fields are missing values (check the Has value column).
+- Which `source.*` references will be pulled from `secret.*` (PII) vs `profile.*` (public).
+- Whether the adapter is `auto_eligible`.
+
+NEVER suggest filling in PII values via chat. If something is missing, tell the user to edit `~/.config/job-hunter/secrets/personal.env` (chmod 600) or `~/.config/job-hunter/profile.yaml` directly.
+
+If the user wants a live (non-dry-run) fill, point them at `job-hunter apply <id>` from a TTY shell; explain that the live Playwright path is a follow-up to the 0.7.x line (see CHANGELOG).

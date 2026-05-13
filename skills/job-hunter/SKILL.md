@@ -2,7 +2,7 @@
 name: job-hunter
 description: "Use this skill when the user asks about job hunting, job applications, scraping job boards, tracking application stages, or filling out job application forms. Triggers include mentions of LinkedIn, Gupy, RemoteOK, Job na Gringa, application tracking, cover letter drafting tied to a tracked job, or any request to apply to a job listing URL. The skill discovers senior mobile / Android / Kotlin Multiplatform openings across BR and international remote markets, tracks each through stages (discovered, queued, applying, applied, screening, technical, behavioral, offer, rejected, withdrawn), and assists with form filling in two modes (shadow and auto) while keeping PII out of model context. Do NOT use for general career advice, resume writing from scratch, or interview coaching unrelated to a tracked job."
 license: Apache-2.0
-version: 0.7.0
+version: 0.8.0
 ---
 
 # job-hunter
@@ -35,6 +35,21 @@ Also never:
 **What you CAN do:** read `assets/personal.env.example` (empty-value template — that's the schema you write against), generate scripts that call `os.environ` after `python-dotenv` has loaded the file at runtime in a child process, and run `job-hunter lint` which reports presence/absence by key name without ever printing values.
 
 If a user pastes a real CPF or other PII into chat, stop, warn them, and instruct them to move it into `personal.env`.
+
+## Slash commands (when installed as a Claude Code plugin)
+
+```
+/job-hunter:discover [source]    # pull new jobs (default: remoteok)
+/job-hunter:list [filters]       # show the pipeline as a Rich table
+/job-hunter:track <url>          # track a specific posting + queue it
+/job-hunter:apply <id>           # preview the form-fill plan (dry-run)
+/job-hunter:status               # pipeline summary + suggested next steps
+/job-hunter:review               # paused adapters + inbox drafts
+/job-hunter:sync                 # regenerate tracking.md
+/job-hunter:doctor               # validate install / perms / deps
+```
+
+These are thin wrappers around the CLI — Claude executes the relevant `job-hunter` command via `Bash` and formats the result.
 
 ## CLI surface
 

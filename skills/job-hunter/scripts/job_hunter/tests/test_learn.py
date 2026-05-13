@@ -79,10 +79,13 @@ def test_infer_source_by_label_dictionary() -> None:
     assert src is None
 
 
-def test_draft_adapter_with_bundled_labels() -> None:
+def test_draft_adapter_with_bundled_labels(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     bundled = list_bundled().parent  # assets/
-    # We use the real bundled field_labels.yaml — that's a contract.
-    labels = load_field_labels_dummy(bundled)
+    paths_mod.clear_cache()
+    monkeypatch.setenv("JOB_HUNTER_HOME_OVERRIDE", str(tmp_path))
+    p = paths_mod.resolve()
+    p.config_dir.mkdir(parents=True, exist_ok=True)
+    labels = load_field_labels(p, bundled)
     dom = """
     <form>
       <input name='nome_completo' required>
@@ -105,20 +108,6 @@ def test_draft_adapter_with_bundled_labels() -> None:
     sources = {f["selector"]: f["source"] for f in fields}
     # Lenient: at least cpf was inferred since the label dictionary has "cpf"
     assert any("cpf" in sel and src.startswith("secret.") for sel, src in sources.items())
-
-
-def load_field_labels_dummy(assets_dir: Path) -> dict[str, object]:
-    # Build a temp Paths whose field_labels_override doesn't exist
-    paths_mod.clear_cache()
-    import os
-
-    os.environ["JOB_HUNTER_HOME_OVERRIDE"] = str(assets_dir.parent / "_tmp_home")
-    p = paths_mod.resolve()
-    p.config_dir.mkdir(parents=True, exist_ok=True)
-    try:
-        return load_field_labels(p, assets_dir)
-    finally:
-        os.environ.pop("JOB_HUNTER_HOME_OVERRIDE", None)
 
 
 def test_save_inbox_draft_writes_yaml(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

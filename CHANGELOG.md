@@ -6,6 +6,23 @@ The plugin's version is the source of truth and is mirrored in `.claude-plugin/m
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-05-13
+
+### Added
+- 8 plugin slash commands wired into `skills/job-hunter/commands/`:
+  `/job-hunter:discover`, `/job-hunter:list`, `/job-hunter:track`,
+  `/job-hunter:apply`, `/job-hunter:status`, `/job-hunter:review`,
+  `/job-hunter:sync`, `/job-hunter:doctor`. Each declares the
+  `Bash(job-hunter:*) / Bash(job:*) / Bash(uv run job-hunter:*)`
+  allow-list so the user isn't prompted for every CLI invocation.
+- SKILL.md documents the slash-command surface so Claude knows to
+  suggest them.
+
+### Fixed
+- `test_draft_adapter_with_bundled_labels` no longer leaks `_tmp_home`
+  next to the bundled assets; uses a proper `tmp_path` fixture.
+- `.gitignore` adds `_tmp_home/` as a belt-and-suspenders guard.
+
 ## [0.7.0] - 2026-05-13
 
 ### Polished (Phase 7: shipping cut)
