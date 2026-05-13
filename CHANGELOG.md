@@ -6,6 +6,29 @@ The plugin's version is the source of truth and is mirrored in `.claude-plugin/m
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-05-13
+
+### Fixed
+- **LinkedIn parser** now handles the authenticated SPA layout. LinkedIn
+  serves two different HTML structures by auth state:
+  - Logged-out: `.base-card` under `ul.jobs-search__results-list` (old
+    layout the skill was written against).
+  - Logged-in (with valid `li_at`): `[data-occludable-job-id]` cards
+    using `.artdeco-entity-lockup__title` / `__subtitle` / `__caption`.
+    **This is what real users see.**
+
+  Old parser returned 0 results for authenticated users because none of
+  its selectors matched. Now tries authenticated layout first, falls
+  back to anonymous. `external_id` comes from `data-occludable-job-id`
+  (more reliable than scraping the URL).
+- Diagnosed via claude-in-chrome against a real logged-in session
+  showing 1,115 results.
+
+### Added
+- `tests/fixtures/linkedin_authenticated.html` for the SPA layout.
+- Test `test_linkedin_parser_authenticated_layout`.
+- `tools/` (one-off harvest scripts) excluded from ruff + mypy.
+
 ## [0.9.0] - 2026-05-13
 
 ### Added — sources
