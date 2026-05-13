@@ -1,0 +1,35 @@
+platform_signature: greenhouse
+version: 1
+match:
+  url_pattern: "*boards.greenhouse.io/*"
+  dom_markers:
+    - "form#application_form"
+
+fields:
+  - selector: "#first_name"
+    source: profile.first_name
+    required: true
+  - selector: "#last_name"
+    source: profile.last_name
+    required: true
+  - selector: "#email"
+    source: profile.links.email
+    required: true
+  - selector: "#phone"
+    source: secret.JOB_HUNTER_PHONE
+    required: true
+  - selector: "input[type='file']#resume"
+    source: file.resume_en
+    required: true
+  - selector: "input[type='file']#cover_letter"
+    source: file.cover_letter_en
+
+submit:
+  selector: "#submit_app"
+  mode: shadow
+  auto_eligible: false
+  pre_submit_checks:
+    - screenshot
+    - assert_no_pii_in_logs
+    - assert_all_required_filled
+  cooldown_seconds: 30

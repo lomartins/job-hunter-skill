@@ -195,6 +195,45 @@ class LinkedInSource:
         return posting
 
 
+def canonical_job_url(external_id: str) -> str:
+    """Return the canonical `www.linkedin.com/jobs/view/<id>/` URL.
+
+    LinkedIn serves the same posting from regional subdomains (in., br., uk.,
+    mx., …). Normalizing avoids per-domain permission churn in
+    claude-in-chrome and ensures dedup by URL works across regions.
+    """
+    return f"https://www.linkedin.com/jobs/view/{external_id}/"
+
+
+def _dedup_title(raw: str) -> str:
+    """LinkedIn's artdeco lockup doubles the title (visible + sr-only twin).
+    Collapse 'X X' to 'X' when the halves match after whitespace normalize.
+    """
+    cleaned = " ".join(raw.split())
+    half = len(cleaned) // 2
+    if len(cleaned) > 40:
+        left = cleaned[:half].strip()
+        right = cleaned[-half:].strip() if half else ""
+        if left and left == right:
+            return left
+    cleaned = cleaned.removesuffix(" with verification").strip()
+    return cleaned
+
+
+def normalize_job_url(url: str) -> str:
+    """Rewrite any `<region>.linkedin.com/jobs/view/<id>` to canonical form.
+
+    Public so other call sites (discover orchestrator's upsert path,
+    test fixtures, manual URL massaging) can use it.
+    """
+    import re
+
+    m = re.search(r"linkedin\.com/jobs/view/(\d+)", url)
+    if not m:
+        return url
+    return canonical_job_url(m.group(1))
+
+
 def parse_search_results(html: str, base_url: str) -> list[JobPosting]:
     """Parse a LinkedIn jobs search result list.
 
@@ -229,18 +268,19 @@ def parse_search_results(html: str, base_url: str) -> list[JobPosting]:
         link_el = card.css_first("a.job-card-container__link, a[href*='/jobs/view/']")
         if not title_el:
             continue
-        href = link_el.attributes.get("href") if link_el else None
-        url = (
-            (href if href and href.startswith("http") else f"{base_url}{href}")
-            if href
-            else f"{base_url}/jobs/view/{ext_id}/"
-        )
+        # Canonical URL: always `www.linkedin.com` regardless of regional subdomain
+        # the user landed on (in.linkedin.com, br.linkedin.com, etc.). De-dups
+        # the same posting across LinkedIn regions and avoids per-domain
+        # permission prompts in claude-in-chrome.
+        url = canonical_job_url(ext_id)
+        # Dedup title text — LinkedIn's accessibility layer often doubles the
+        # title in the artdeco lockup (visible text + sr-only twin).
         out.append(
             JobPosting(
                 source="linkedin",
                 external_id=ext_id,
-                url=url.split("?")[0],
-                title=title_el.text(strip=True),
+                url=url,
+                title=_dedup_title(title_el.text(strip=True)),
                 company=company_el.text(strip=True) if company_el else "Unknown",
                 location=location_el.text(strip=True) if location_el else None,
                 raw_payload={"layout": "authenticated"},
@@ -276,12 +316,14 @@ def parse_search_results(html: str, base_url: str) -> list[JobPosting]:
             tail = url.split("/jobs/view/", 1)[1]
             external_id = tail.split("?", 1)[0].rstrip("/").split("/")[-1]
         external_id = external_id or url
+        # Canonical URL (region-normalized) if we have a real numeric id.
+        canonical = canonical_job_url(external_id) if external_id.isdigit() else url.split("?")[0]
         out.append(
             JobPosting(
                 source="linkedin",
                 external_id=external_id,
-                url=url.split("?")[0],
-                title=title_el.text(strip=True),
+                url=canonical,
+                title=_dedup_title(title_el.text(strip=True)),
                 company=company_el.text(strip=True),
                 location=location_el.text(strip=True) if location_el else None,
                 raw_payload={"layout": "anonymous", "href": href},

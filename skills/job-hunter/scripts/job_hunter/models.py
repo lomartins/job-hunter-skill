@@ -16,6 +16,7 @@ class Stage(StrEnum):
     DISCOVERED = "discovered"
     QUEUED = "queued"
     APPLYING = "applying"
+    APPLYING_BLOCKED_AUTH = "applying_blocked_auth"  # ATS needs account creation/login
     APPLIED = "applied"
     SCREENING = "screening"
     TECHNICAL = "technical"
@@ -29,6 +30,7 @@ ACTIVE_STAGES: frozenset[Stage] = frozenset(
     {
         Stage.QUEUED,
         Stage.APPLYING,
+        Stage.APPLYING_BLOCKED_AUTH,
         Stage.APPLIED,
         Stage.SCREENING,
         Stage.TECHNICAL,

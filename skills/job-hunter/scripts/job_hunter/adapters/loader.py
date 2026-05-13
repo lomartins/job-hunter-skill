@@ -124,10 +124,15 @@ def load_adapter(path: Path) -> Adapter:
 
 
 def list_bundled() -> Path:
-    """Path to the bundled adapters dir (read-only)."""
-    here = Path(__file__).resolve()
-    # scripts/job_hunter/adapters/loader.py -> skills/job-hunter/assets/adapters/
-    return here.parent.parent.parent.parent / "assets" / "adapters"
+    """Path to the bundled adapters dir (read-only).
+
+    Adapters live inside the package at `job_hunter/_assets/adapters/` so
+    they ride along in the installed wheel. importlib.resources resolves
+    the path whether running from source or from a wheel install.
+    """
+    from importlib.resources import files
+
+    return Path(str(files("job_hunter") / "_assets" / "adapters"))
 
 
 def list_user(paths: Paths) -> Path:

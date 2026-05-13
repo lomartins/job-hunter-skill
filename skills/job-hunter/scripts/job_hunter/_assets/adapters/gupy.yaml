@@ -1,0 +1,40 @@
+platform_signature: gupy
+version: 1
+match:
+  url_pattern: "*.gupy.io/jobs/*"
+  dom_markers:
+    - "div[data-testid='application-form']"
+
+fields:
+  - selector: "input[name='name']"
+    source: secret.JOB_HUNTER_FULL_NAME
+    required: true
+  - selector: "input[name='email']"
+    source: profile.links.email
+  - selector: "input[name='phone']"
+    source: secret.JOB_HUNTER_PHONE
+    required: true
+  - selector: "input[name='cpf']"
+    source: secret.JOB_HUNTER_CPF
+    required: true
+    mask: "###.###.###-##"
+  - selector: "input[name='linkedin']"
+    source: profile.links.linkedin
+  - selector: "input[name='github']"
+    source: profile.links.github
+  - selector: "input[type='file'][name='resume']"
+    source: file.resume_pt
+    required: true
+  - selector: "textarea[name='cover_letter']"
+    source: generate.cover_letter
+
+submit:
+  selector: "button[type='submit']"
+  mode: shadow
+  auto_eligible: false
+  pre_submit_checks:
+    - screenshot
+    - assert_no_pii_in_logs
+    - assert_all_required_filled
+    - assert_resume_matches_locale
+  cooldown_seconds: 30

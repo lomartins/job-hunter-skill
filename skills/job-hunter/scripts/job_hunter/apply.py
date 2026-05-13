@@ -171,6 +171,44 @@ def is_tty_available() -> bool:
         return False
 
 
+# ─── auth-wall detection (Workday / Greenhouse "Create account" gates) ───────
+
+
+AUTH_WALL_PHRASES = (
+    "create account",
+    "create an account",
+    "criar conta",
+    "candidate sign in",
+    "candidate login",
+    "applicant login",
+    "candidate portal",
+    "sign in to apply",
+    "log in to apply",
+    "entrar para se candidatar",
+    "candidate self service",
+)
+
+
+def detect_auth_wall(*, url: str, body_text: str | None = None) -> str | None:
+    """Heuristic: return a reason string if the page looks like an ATS auth wall.
+
+    Conservative — we'd rather false-positive (flag for review) than auto-apply
+    with half-filled fields that get rejected. Returns None when no wall detected.
+    """
+    lowered_url = url.lower()
+    if "myworkdayjobs.com/wday/authgwy" in lowered_url:
+        return "Workday tenant-specific candidate account required"
+    for marker in ("/auth/login", "/login/?next=", "/candidate/login"):
+        if marker in lowered_url:
+            return "ATS login URL — applicant account required"
+    if body_text:
+        sample = body_text.lower()[:8000]
+        for phrase in AUTH_WALL_PHRASES:
+            if phrase in sample:
+                return f"page contains '{phrase}' — applicant account likely required"
+    return None
+
+
 # ─── high-level orchestrator (no Playwright import in tests) ─────────────────
 
 

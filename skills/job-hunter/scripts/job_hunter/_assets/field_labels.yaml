@@ -1,0 +1,137 @@
+# Dictionary used by learn.py to map unknown form inputs to canonical sources.
+# Labels are matched case-insensitively against `name`, `placeholder`, `aria-label`,
+# and surrounding <label> text. Threshold = 0.8 token overlap.
+#
+# Users add overrides at $XDG_CONFIG_HOME/job-hunter/field_labels.yaml; they merge
+# on top of this file.
+
+# Identity (PII — resolves to secret.*)
+full_name:
+  source: secret.JOB_HUNTER_FULL_NAME
+  labels:
+    - "nome completo"
+    - "nome"
+    - "full name"
+    - "name"
+    - "your name"
+
+cpf:
+  source: secret.JOB_HUNTER_CPF
+  mask: "###.###.###-##"
+  labels:
+    - "cpf"
+    - "documento"
+    - "cadastro de pessoa física"
+
+rg:
+  source: secret.JOB_HUNTER_RG
+  labels:
+    - "rg"
+    - "registro geral"
+    - "documento de identidade"
+
+phone:
+  source: secret.JOB_HUNTER_PHONE
+  labels:
+    - "telefone"
+    - "celular"
+    - "phone"
+    - "phone number"
+    - "mobile"
+    - "whatsapp"
+
+birth_date:
+  source: secret.JOB_HUNTER_BIRTH_DATE
+  labels:
+    - "data de nascimento"
+    - "date of birth"
+    - "dob"
+    - "birthday"
+
+# Contact (PII)
+address:
+  source: secret.JOB_HUNTER_ADDRESS_LINE1
+  labels:
+    - "endereço"
+    - "address"
+    - "street"
+
+city:
+  source: secret.JOB_HUNTER_CITY
+  labels:
+    - "cidade"
+    - "city"
+
+state:
+  source: secret.JOB_HUNTER_STATE
+  labels:
+    - "estado"
+    - "state"
+    - "uf"
+
+postal_code:
+  source: secret.JOB_HUNTER_POSTAL_CODE
+  labels:
+    - "cep"
+    - "postal code"
+    - "zip"
+    - "zip code"
+
+# Compensation (PII)
+salary_expectation_brl:
+  source: secret.JOB_HUNTER_SALARY_EXPECTATION_BRL
+  labels:
+    - "pretensão salarial"
+    - "expectativa salarial"
+    - "salary expectation"
+    - "expected salary"
+    - "compensation expectation"
+
+# Public profile (non-PII — profile.yaml)
+email:
+  source: profile.links.email
+  labels:
+    - "email"
+    - "e-mail"
+    - "your email"
+
+linkedin:
+  source: profile.links.linkedin
+  labels:
+    - "linkedin"
+    - "linkedin url"
+    - "linkedin profile"
+
+github:
+  source: profile.links.github
+  labels:
+    - "github"
+    - "github url"
+    - "github profile"
+
+portfolio:
+  source: profile.links.portfolio
+  labels:
+    - "portfolio"
+    - "website"
+    - "personal site"
+    - "site pessoal"
+
+# Files
+resume:
+  source: file.resume_en
+  labels:
+    - "resume"
+    - "currículo"
+    - "curriculum vitae"
+    - "cv"
+    - "upload your resume"
+
+cover_letter:
+  source: generate.cover_letter
+  labels:
+    - "cover letter"
+    - "carta de apresentação"
+    - "motivation"
+    - "why are you a fit"
+    - "why do you want to work here"

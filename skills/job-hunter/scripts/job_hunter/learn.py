@@ -119,6 +119,13 @@ def match_known_ats(url: str, dom_text: str) -> str | None:
     return None
 
 
+def bundled_assets_dir() -> Path:
+    """In-package assets dir; mirrors `assets/` from source for wheel installs."""
+    from importlib.resources import files
+
+    return Path(str(files("job_hunter") / "_assets"))
+
+
 def load_field_labels(paths: Paths, bundled_assets: Path) -> dict[str, Any]:
     """Merge bundled `field_labels.yaml` with any user override.
 

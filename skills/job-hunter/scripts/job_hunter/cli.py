@@ -695,6 +695,63 @@ def _fmt(value: int | None) -> str:
     return f"{value:,}" if value is not None else "—"
 
 
+@app.command(name="validate")
+def validate_cmd(
+    id: int | None = typer.Argument(
+        None, help="Application id to validate. Omit to scan everything in `queued`."
+    ),
+    candidate_country: str = typer.Option(
+        "Brazil", "--country", help="Your country, for onsite/locked checks."
+    ),
+) -> None:
+    """Pre-flag obvious non-fits (junior, US-only, country-locked, onsite).
+
+    Looks at title + location + description. Blocks = clear no, warns = check.
+    Empty output = looks fine.
+    """
+    from .validate import validate_fit
+
+    paths = resolve()
+    run_migrations(paths)
+    eng = get_engine(paths)
+    with Session(eng) as sess:
+        if id is not None:
+            app = sess.get(Application, id)
+            if app is None:
+                console.print(f"[red]not found[/red]: application {id}")
+                raise typer.Exit(1)
+            job = sess.get(Job, app.job_id)
+            if job is None:
+                console.print("[red]inconsistent state[/red]")
+                raise typer.Exit(1)
+            reports = [(app, validate_fit(job, candidate_country=candidate_country))]
+        else:
+            stmt = (
+                select(Application, Job)
+                .join(Job)
+                .where(Application.current_stage == Stage.QUEUED.value)
+            )
+            reports = [
+                (a, validate_fit(j, candidate_country=candidate_country))
+                for a, j in sess.exec(stmt).all()
+            ]
+    table = Table(title="validate-fit")
+    for col in ("ID", "Concerns"):
+        table.add_column(col)
+    flagged = 0
+    for app, report in reports:
+        if not report.concerns:
+            continue
+        flagged += 1
+        details = "\n".join(f"[{c.severity}] {c.code}: {c.message}" for c in report.concerns)
+        table.add_row(f"{app.id:03d}", details)
+    console.print(table)
+    console.print(
+        f"\nScanned {len(reports)} application(s). Flagged: {flagged}. "
+        f"(others have no concerns or missing description.)"
+    )
+
+
 @app.command(name="report")
 def report_cmd(weekly: bool = typer.Option(False, "--weekly")) -> None:
     """Print pipeline statistics."""

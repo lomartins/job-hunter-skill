@@ -6,6 +6,58 @@ The plugin's version is the source of truth and is mirrored in `.claude-plugin/m
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-05-13
+
+Addresses items from the auto-apply-pipeline handoff doc.
+
+### Fixed
+- **Bundled adapters now ship in the wheel** (handoff #1 root cause).
+  Pre-fix `job-hunter adapter list` showed 0 adapters in installed mode
+  because `assets/adapters/*.yaml` lived outside the packaged module.
+  Moved to `job_hunter/_assets/adapters/` and resolved via
+  `importlib.resources.files("job_hunter") / "_assets" / "adapters"`.
+  Installed wheel now ships gupy + greenhouse + lever + workday + ashby
+  YAMLs, all discoverable from any install path.
+- **LinkedIn URLs normalized to canonical `www.linkedin.com`** at
+  discover time (handoff #6). `in.linkedin.com`, `br.linkedin.com`, etc.
+  all rewrite to `https://www.linkedin.com/jobs/view/<id>/`. Fewer
+  per-domain permission prompts; URL-based dedup actually de-dups.
+- **LinkedIn card title dedup**: artdeco lockup's sr-only twin doubled
+  titles like "Senior Android Engineer Senior Android Engineer". New
+  `_dedup_title()` collapses them. Also strips trailing "with
+  verification".
+
+### Added
+- **Stage: `applying_blocked_auth`** (handoff #4). For ATSes that
+  require account creation (Workday tenants, gated Greenhouse boards).
+  `detect_auth_wall()` heuristic surfaces this from URL or page body.
+- **`job-hunter validate [id]` CLI verb** (handoff #7). Pre-flags
+  obvious non-fits: junior/intern title vs senior profile, US-only
+  citizenship/clearance phrases, country-locked roles, on-site or
+  hybrid in a country the candidate isn't in. Use before applying to
+  avoid wasted form fills and Connects spend. Slash command
+  `/job-hunter:validate` ships too.
+- **`job_hunter.validate`**: `FitConcern`, `FitReport`, `validate_fit()`
+  with severity levels (block/warn/note).
+- 24 new tests across `test_handoff_fixes.py` + `test_validate_fit.py`.
+
+### Audited (no fix needed)
+- **Discover counter** (handoff #9): per-process counters in
+  `run_discover()` are correct (increment per persisted insert). User's
+  "discovered=0, DB grew 11" report was background-process leak — two
+  concurrent discovers wrote to the same DB. Not a counter bug.
+
+### Punted / out of scope
+- **#2 Easy Apply React click**: LinkedIn's React event delegation
+  needs `dispatchEvent(MouseEvent)` or Playwright's trusted `page.click`.
+  No adapter shipped this release; next step.
+- **#5 JD enrichment**: full-description fetch_detail in discover is
+  too slow (12-25s × 50 cards = 10+ minutes). Punted to on-demand
+  `enrich <id>` verb in a follow-up.
+- **#3 claude-in-chrome ATS domain allowlist**: lives in user's
+  `.claude/settings.json`, not in this repo.
+- **#8 Classifier bulk withdrawals**: also a host-level setting.
+
 ## [0.9.3] - 2026-05-13
 
 ### Fixed
