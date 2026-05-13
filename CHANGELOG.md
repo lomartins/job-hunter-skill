@@ -6,6 +6,34 @@ The plugin's version is the source of truth and is mirrored in `.claude-plugin/m
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-13
+
+### Added (Phase 4: adapters + resolver)
+- YAML adapter format (`platform_signature`, `match`, `fields`, `submit`)
+  with strict parse + helpful errors.
+- 5 bundled adapters under `skills/job-hunter/assets/adapters/`: Gupy,
+  Greenhouse, Lever, Workday, Ashby. All `auto_eligible: false`.
+- `field_labels.yaml`: BR + EN label dictionary for `learn.py` (Phase 5).
+- `adapters.loader`: bundled + user override resolution by signature.
+  `match_url()` for URL-pattern selection.
+- `adapters.resolver.SecretResolver`: dispatcher for `profile.*`,
+  `secret.*`, `file.*`, `generate.*`. Values fetched lazily; FieldPlan
+  exposes only presence flags + selectors (no values) — model-safe.
+- `adapters.generators.cover_letter`: deterministic templated default,
+  receives PUBLIC context only (job_title, company, role_summary,
+  public_profile_blurb). Pluggy hook reserved for user LLM override.
+
+### Test coverage (+9 tests, 54 total)
+- All 5 bundled adapters load cleanly; all `auto_eligible=False`.
+- User override beats bundled by platform_signature.
+- URL matching for Gupy, Greenhouse; non-match returns None.
+- Invalid YAML raises AdapterError with file path.
+- Resolver: profile + secret + file + generate dispatch.
+- Missing secret → `has_value=False`, never a value field on PlanEntry.
+- Generator function signature accepts only `ctx` dict (structural check
+  that PII can't be smuggled in).
+- File resolution finds `.pdf`/`.docx` variants.
+
 ## [0.3.0] - 2026-05-13
 
 ### Added (Phase 3: sources)

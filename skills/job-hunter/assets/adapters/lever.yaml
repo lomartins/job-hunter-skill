@@ -1,0 +1,34 @@
+platform_signature: lever
+version: 1
+match:
+  url_pattern: "*jobs.lever.co/*/apply*"
+
+fields:
+  - selector: "input[name='name']"
+    source: secret.JOB_HUNTER_FULL_NAME
+    required: true
+  - selector: "input[name='email']"
+    source: profile.links.email
+    required: true
+  - selector: "input[name='phone']"
+    source: secret.JOB_HUNTER_PHONE
+    required: true
+  - selector: "input[name='org']"
+    source: profile.current_company
+  - selector: "input[name='urls[LinkedIn]']"
+    source: profile.links.linkedin
+  - selector: "input[name='urls[GitHub]']"
+    source: profile.links.github
+  - selector: "input[type='file'][name='resume']"
+    source: file.resume_en
+    required: true
+
+submit:
+  selector: "button[type='submit'][data-qa='submit-application-button']"
+  mode: shadow
+  auto_eligible: false
+  pre_submit_checks:
+    - screenshot
+    - assert_no_pii_in_logs
+    - assert_all_required_filled
+  cooldown_seconds: 30
