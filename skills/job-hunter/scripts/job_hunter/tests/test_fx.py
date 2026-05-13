@@ -87,9 +87,7 @@ def test_load_rates_refetches_when_stale(
 ) -> None:
     """Cache older than TTL → fresh fetch."""
     paths = resolve()
-    _seed_cache(
-        job_hunter_home, datetime.now(UTC) - timedelta(days=2), {"EUR": 1.0, "USD": 1.0}
-    )
+    _seed_cache(job_hunter_home, datetime.now(UTC) - timedelta(days=2), {"EUR": 1.0, "USD": 1.0})
     called = {"n": 0}
 
     def stub(*_: Any, **__: Any) -> fx.Rates:
@@ -112,9 +110,7 @@ def test_load_rates_network_failure_falls_back_to_stale_cache(
 ) -> None:
     """When the network is down, stale cached rates beat None."""
     paths = resolve()
-    _seed_cache(
-        job_hunter_home, datetime.now(UTC) - timedelta(days=10), {"EUR": 1.0, "USD": 1.0}
-    )
+    _seed_cache(job_hunter_home, datetime.now(UTC) - timedelta(days=10), {"EUR": 1.0, "USD": 1.0})
 
     monkeypatch.setattr(fx, "_fetch_remote", lambda *a, **kw: None)
     rates = fx.load_rates(paths)

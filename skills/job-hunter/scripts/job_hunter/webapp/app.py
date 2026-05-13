@@ -68,11 +68,7 @@ def _looks_like_html(raw: str) -> bool:
 
 def _normalize_to_markdown(raw: str) -> str:
     """Turn an HTML-bearing job description into markdown. Idempotent on plain text."""
-    md = (
-        html_to_markdown(raw, heading_style="ATX", bullets="-")
-        if _looks_like_html(raw)
-        else raw
-    )
+    md = html_to_markdown(raw, heading_style="ATX", bullets="-") if _looks_like_html(raw) else raw
     md = html.unescape(md)
     md = _WS_RE.sub(" ", md)
     md = _NEWLINES_RE.sub("\n\n", md)
