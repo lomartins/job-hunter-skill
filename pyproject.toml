@@ -1,6 +1,6 @@
 [project]
 name = "job-hunter"
-version = "0.9.0"
+version = "0.9.1"
 description = "Discover, track, and assist with senior mobile / Android / Kotlin Multiplatform job applications. PII-safe form filling."
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -86,6 +86,7 @@ dev = []
 line-length = 100
 target-version = "py312"
 src = ["skills/job-hunter/scripts"]
+extend-exclude = ["tools/"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP", "B", "SIM", "ASYNC", "S"]
@@ -102,6 +103,7 @@ strict = true
 warn_unused_ignores = true
 files = ["skills/job-hunter/scripts/job_hunter"]
 mypy_path = "skills/job-hunter/scripts"
+exclude = "tools/"
 
 [[tool.mypy.overrides]]
 module = ["selectolax.*", "feedparser.*", "apscheduler.*", "vcr.*"]

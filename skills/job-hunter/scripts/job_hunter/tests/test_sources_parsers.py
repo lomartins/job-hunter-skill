@@ -62,7 +62,7 @@ def test_gupy_parser_extracts_three_cards() -> None:
     assert senior.url == "https://nubank.gupy.io/jobs/4392838"
 
 
-def test_linkedin_parser_extracts_three_cards() -> None:
+def test_linkedin_parser_anonymous_layout() -> None:
     html = (FIXTURES / "linkedin_search.html").read_text()
     postings = parse_linkedin(html, "https://www.linkedin.com")
     assert len(postings) == 3
@@ -71,6 +71,28 @@ def test_linkedin_parser_extracts_three_cards() -> None:
     assert senior.location == "Remote, Brazil"
     assert senior.external_id == "3812345678"
     assert "?" not in senior.url
+    assert senior.raw_payload.get("layout") == "anonymous"
+
+
+def test_linkedin_parser_authenticated_layout() -> None:
+    """Logged-in SPA layout uses `[data-occludable-job-id]` + artdeco lockup."""
+    html = (FIXTURES / "linkedin_authenticated.html").read_text()
+    postings = parse_linkedin(html, "https://www.linkedin.com")
+    assert len(postings) == 3
+    senior = next(p for p in postings if p.title == "Senior Android Engineer")
+    assert senior.company == "Nubank"
+    assert senior.location == "São Paulo, SP (Remote)"
+    assert senior.external_id == "4413978233"
+    assert senior.url == "https://www.linkedin.com/jobs/view/4413978233/"
+    assert senior.raw_payload.get("layout") == "authenticated"
+    assert "?" not in senior.url
+    # All 3 expected titles
+    titles = {p.title for p in postings}
+    assert {
+        "Senior Android Engineer",
+        "Kotlin Multiplatform Engineer",
+        "Mobile Tech Lead",
+    } <= titles
 
 
 def test_search_query_role_filter_excludes_junior() -> None:

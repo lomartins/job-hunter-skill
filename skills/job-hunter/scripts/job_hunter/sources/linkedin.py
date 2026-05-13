@@ -99,18 +99,69 @@ class LinkedInSource:
 
 
 def parse_search_results(html: str, base_url: str) -> list[JobPosting]:
+    """Parse a LinkedIn jobs search result list.
+
+    LinkedIn serves TWO different layouts:
+
+    1. **Authenticated** (when `li_at` is valid): SPA-style. Cards are
+       `[data-occludable-job-id]` containing `.artdeco-entity-lockup__title` /
+       `__subtitle` / `__caption`. The `data-occludable-job-id` attribute is
+       the authoritative external_id.
+
+    2. **Anonymous** (no cookie / cookie rejected): server-rendered. Cards are
+       `.base-card` under `ul.jobs-search__results-list`. External_id comes
+       from `/jobs/view/<id>` in the link href.
+
+    We try the authenticated layout first; fall back to the anonymous one.
+    """
     tree = HTMLParser(html)
     out: list[JobPosting] = []
     from selectolax.parser import Node
 
-    seen: set[int] = set()
+    # ── authenticated layout ────────────────────────────────────────────────
+    auth_cards = tree.css("[data-occludable-job-id]")
+    seen_ids: set[str] = set()
+    for card in auth_cards:
+        ext_id = card.attributes.get("data-occludable-job-id") or card.attributes.get("data-job-id")
+        if not ext_id or ext_id in seen_ids:
+            continue
+        seen_ids.add(ext_id)
+        title_el = card.css_first(".artdeco-entity-lockup__title")
+        company_el = card.css_first(".artdeco-entity-lockup__subtitle")
+        location_el = card.css_first(".artdeco-entity-lockup__caption")
+        link_el = card.css_first("a.job-card-container__link, a[href*='/jobs/view/']")
+        if not title_el:
+            continue
+        href = link_el.attributes.get("href") if link_el else None
+        url = (
+            (href if href and href.startswith("http") else f"{base_url}{href}")
+            if href
+            else f"{base_url}/jobs/view/{ext_id}/"
+        )
+        out.append(
+            JobPosting(
+                source="linkedin",
+                external_id=ext_id,
+                url=url.split("?")[0],
+                title=title_el.text(strip=True),
+                company=company_el.text(strip=True) if company_el else "Unknown",
+                location=location_el.text(strip=True) if location_el else None,
+                raw_payload={"layout": "authenticated"},
+            )
+        )
+
+    if out:
+        return out
+
+    # ── anonymous layout (fallback) ─────────────────────────────────────────
+    seen_nodes: set[int] = set()
     cards: list[Node] = []
     for sel in ("ul.jobs-search__results-list li", ".jobs-search-results__list-item"):
         for node in tree.css(sel):
             key = id(node)
-            if key in seen:
+            if key in seen_nodes:
                 continue
-            seen.add(key)
+            seen_nodes.add(key)
             cards.append(node)
     for card in cards:
         title_el = card.css_first("h3.base-search-card__title, .base-search-card__title")
@@ -123,7 +174,6 @@ def parse_search_results(html: str, base_url: str) -> list[JobPosting]:
             continue
         href = link_el.attributes.get("href") or ""
         url = href if href.startswith("http") else f"{base_url}{href}"
-        # External id from /jobs/view/<id>/
         external_id = ""
         if "/jobs/view/" in url:
             tail = url.split("/jobs/view/", 1)[1]
@@ -137,7 +187,7 @@ def parse_search_results(html: str, base_url: str) -> list[JobPosting]:
                 title=title_el.text(strip=True),
                 company=company_el.text(strip=True),
                 location=location_el.text(strip=True) if location_el else None,
-                raw_payload={"href": href},
+                raw_payload={"layout": "anonymous", "href": href},
             )
         )
     return out
