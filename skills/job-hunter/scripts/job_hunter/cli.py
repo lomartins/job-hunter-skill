@@ -34,6 +34,8 @@ from .models import (
     StageHistory,
 )
 from .paths import resolve
+from .salary import aggregate as salary_aggregate
+from .salary import suggest_expectation
 from .sources import REGISTRY, SourceError, get_source
 
 app = typer.Typer(
@@ -627,6 +629,70 @@ def adapter_contribute_cmd(signature: str = typer.Argument(...)) -> None:
         f"[dim]contribute path stubbed: would push {src} to {upstream} via gh. "
         "Live PR flow lands in a follow-up.[/dim]"
     )
+
+
+@app.command(name="salary")
+def salary_cmd(
+    role: str = typer.Option(..., "--role", help="Role keyword (substring match)."),
+    location: str | None = typer.Option(None, "--location", help="Location substring."),
+    source: str | None = typer.Option(None, "--source", help="Filter to one source."),
+    since_days: int | None = typer.Option(
+        None, "--since-days", help="Only rows scraped in the last N days."
+    ),
+    padding: float = typer.Option(
+        0.10, "--padding", help="Padding on top of p75 for the suggested expectation."
+    ),
+) -> None:
+    """Aggregate salary distribution from postings already in the DB.
+
+    Uses Job.salary_min / salary_max from Indeed + RemoteOK + Job na Gringa +
+    Glassdoor rows you have. No live scraping. Output: per-currency percentiles
+    + a suggested expectation (p75 + padding).
+    """
+    paths = resolve()
+    run_migrations(paths)
+    eng = get_engine(paths)
+    with Session(eng) as sess:
+        report = salary_aggregate(
+            sess,
+            role=role,
+            location=location,
+            source=source,
+            since_days=since_days,
+        )
+
+    if report.total_samples() == 0:
+        console.print(
+            f"[yellow]No salary samples for role={role!r}"
+            + (f", location={location!r}" if location else "")
+            + (f", source={source!r}" if source else "")
+            + "[/yellow]. Run `job-hunter discover --source indeed` (or remoteok / "
+            "job_na_gringa / glassdoor) first to gather data."
+        )
+        raise typer.Exit(1)
+
+    table = Table(title=f"Salary distribution — role={role!r}")
+    for col in ("Currency", "Count", "p25", "median", "p75", "Suggested (p75 + pad)"):
+        table.add_column(col, justify="right")
+    for currency in sorted(report.buckets):
+        bucket = report.buckets[currency]
+        suggestion = suggest_expectation(report, currency, padding=padding)
+        table.add_row(
+            currency,
+            str(bucket.count),
+            _fmt(bucket.percentile(25)),
+            _fmt(bucket.median),
+            _fmt(bucket.percentile(75)),
+            _fmt(suggestion),
+        )
+    console.print(table)
+    console.print(
+        f"\nTotal samples: {report.total_samples()}. Padding: {int(padding * 100)}% on p75."
+    )
+
+
+def _fmt(value: int | None) -> str:
+    return f"{value:,}" if value is not None else "—"
 
 
 @app.command(name="report")

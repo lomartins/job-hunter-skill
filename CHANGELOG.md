@@ -6,6 +6,51 @@ The plugin's version is the source of truth and is mirrored in `.claude-plugin/m
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-05-13
+
+### Added — sources
+- **Indeed** source: HTML scrape of `br.indeed.com`. Captcha-aware
+  (`SourceError` with recovery hint). BR + US currency parsing.
+- **Glassdoor** source: HTML scrape + cookie auth (`GLASSDOOR_GD_ID` +
+  `GLASSDOOR_UAC`). Salary-tool page parser
+  (`GlassdoorSource.fetch_salary_estimate()`).
+- Both wired into `REGISTRY`. `personal.env.example` adds slots for new
+  cookies. References at `references/sources/indeed.md` + `glassdoor.md`.
+
+### Added — Firecrawl integration
+- Self-hosted opt-in scraping backend for **Indeed + Glassdoor only**.
+- Setting `FIRECRAWL_ENDPOINT=http://localhost:3002` in `personal.env`
+  routes those two sources' `_fetch` through `/v1/scrape`.
+- Other sources (RemoteOK, Gupy, Job na Gringa, LinkedIn) bypass Firecrawl
+  intentionally.
+- `firecrawl_client.assert_apply_path_safe()` raises if `apply.py` runs
+  with Firecrawl configured. PII never transits Firecrawl.
+- Full setup + privacy boundary in `references/firecrawl.md`.
+
+### Added — salary aggregator
+- `job_hunter.salary.aggregate()` walks the DB, filters by role substring
+  + optional location/source/recency, returns per-currency percentile
+  buckets (p25 / median / p75).
+- `suggest_expectation()` returns p75 + configurable padding.
+- `job-hunter salary --role <r> [--location L] [--source S] [--since-days N]`
+  CLI verb + `/job-hunter:salary` slash command.
+
+### Test coverage (+22, 116 total)
+- Indeed parser: 3-card fixture, BRL/USD/k-suffix salaries, captcha
+  detection.
+- Glassdoor listing parser (2-card) + salary-tool page parser.
+- Salary aggregator: role substring match, location filter, currency
+  buckets, percentile correctness, no-match, suggest_expectation.
+- FirecrawlClient: `from_env`, success scrape, 4xx + non-success responses.
+- Routing: Indeed/Glassdoor route through Firecrawl when env set; direct
+  otherwise. Apply path hard-blocks when Firecrawl is configured.
+
+### Fixed
+- Salary parser handles BR thousands separator (`R$ 12.000`) and US
+  (`12,000`) without confusing them with decimals.
+- `_is_remote()` recognizes `remoto` / `worldwide` / `anywhere` in
+  addition to `remote`.
+
 ## [0.8.0] - 2026-05-13
 
 ### Added

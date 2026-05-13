@@ -203,6 +203,12 @@ def plan_for_url(
 
     Returns (adapter, plan, error_message). On no-match, returns (None, None, msg).
     """
+    # Defense in depth: Firecrawl is forbidden in the apply path because form
+    # values include PII. See references/firecrawl.md.
+    from .firecrawl_client import assert_apply_path_safe
+
+    assert_apply_path_safe()
+
     adapters = inputs.adapter_overrides or load_all(inputs.paths)
     adapter = match_url(inputs.url, adapters)
     if adapter is None:

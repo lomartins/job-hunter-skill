@@ -16,7 +16,9 @@ from .base import (
     new_run_dir,
     write_report,
 )
+from .glassdoor import SOURCE as GLASSDOOR
 from .gupy import SOURCE as GUPY
+from .indeed import SOURCE as INDEED
 from .job_na_gringa import SOURCE as JOB_NA_GRINGA
 from .linkedin import SOURCE as LINKEDIN
 from .remoteok import SOURCE as REMOTEOK
@@ -27,6 +29,8 @@ REGISTRY: dict[str, Source] = {
     JOB_NA_GRINGA.name: JOB_NA_GRINGA,
     GUPY.name: GUPY,
     LINKEDIN.name: LINKEDIN,
+    INDEED.name: INDEED,
+    GLASSDOOR.name: GLASSDOOR,
     **STUB_SOURCES,
 }
 

@@ -109,19 +109,35 @@ flowchart LR
 
 ## Source compatibility
 
-| Source | Phase | Method | Auth | Notes |
-|--------|-------|--------|------|-------|
-| Job na Gringa | 1 | HTML + Playwright | — | Curated remote roles for BR devs |
-| LinkedIn | 1 | Playwright + cookie | `LINKEDIN_LI_AT` | Rate-limited 12–25s |
-| Gupy | 1 | HTML | — | `<company>.gupy.io/jobs` |
-| RemoteOK | 1 | JSON API | — | Public |
-| Remotive | 2 | JSON API | — | Public |
-| We Work Remotely | 2 | RSS | — | |
-| Himalayas | 2 | HTML/GraphQL | — | |
-| Programathor | 2 | HTML | — | BR |
-| Coodesh | 2 | HTML | Optional | |
-| Trampos.co | 2 | HTML | — | BR |
-| Arc.dev | 2 | HTML | Required | |
+| Source | Phase | Method | Auth | Firecrawl boost? |
+|--------|-------|--------|------|------------------|
+| Job na Gringa | 1 | HTML | — | No |
+| LinkedIn | 1 | HTML + cookie | `LINKEDIN_LI_AT` | No (cookie auth) |
+| Gupy | 1 | HTML | — | No |
+| RemoteOK | 1 | JSON API | — | No |
+| **Indeed** | **0.9** | **HTML, captcha-aware** | **—** | **Yes** |
+| **Glassdoor** | **0.9** | **HTML + cookie or Firecrawl** | **`GLASSDOOR_GD_ID` + `_UAC`** | **Yes** |
+| Remotive | stub | JSON API | — | — |
+| We Work Remotely | stub | RSS | — | — |
+| Himalayas | stub | HTML/GraphQL | — | — |
+| Programathor | stub | HTML | — | — |
+| Coodesh | stub | HTML | Optional | — |
+| Trampos.co | stub | HTML | — | — |
+| Arc.dev | stub | HTML | Required | — |
+
+Set `FIRECRAWL_ENDPOINT=http://localhost:3002` in `personal.env` to route Indeed + Glassdoor through a self-hosted Firecrawl instance (handles JS rendering + anti-bot). Apply-path is hard-disabled when Firecrawl is set. See [`references/firecrawl.md`](skills/job-hunter/references/firecrawl.md).
+
+## Salary distribution from your own pipeline
+
+After running discover across a few sources, get the role's salary distribution from the data you've actually seen:
+
+```bash
+job-hunter discover --source indeed
+job-hunter discover --source remoteok
+job-hunter salary --role "android" --location brazil
+```
+
+Outputs p25 / median / p75 per currency + a suggested expectation (p75 + 10% padding). Uses postings already in the DB — no live Glassdoor scraping needed.
 
 ## Adapter platform support
 
