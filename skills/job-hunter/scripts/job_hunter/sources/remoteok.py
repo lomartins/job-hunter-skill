@@ -101,6 +101,8 @@ def _to_posting(item: dict[str, object]) -> JobPosting:
         description=description,
         raw_payload={"tags": tags, "id": item.get("id")},
         tags=tags,
+        # RemoteOK's salary_min/max fields are always annual figures.
+        salary_period="year" if (salary_min or salary_max) else None,
     )
 
 

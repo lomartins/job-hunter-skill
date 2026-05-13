@@ -58,6 +58,7 @@ class JobPosting:
     description: str | None = None
     raw_payload: dict[str, Any] = field(default_factory=dict)
     tags: list[str] = field(default_factory=list)
+    salary_period: str | None = None  # "hour" | "day" | "month" | "year" | None
 
     def fingerprint(self) -> str:
         snippet = (self.description or "")[:500]

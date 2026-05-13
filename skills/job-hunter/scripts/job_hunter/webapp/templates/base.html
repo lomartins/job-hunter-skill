@@ -38,6 +38,17 @@
         {% endfor %}
       </nav>
       <div class="ml-auto flex items-center gap-2">
+        <form method="post" action="/salary-period" class="inline-flex">
+          <input type="hidden" name="next" value="{{ request.url.path }}" />
+          <select name="period"
+                  onchange="this.form.submit()"
+                  class="px-2 py-1 rounded-md text-xs font-mono border border-slate-700 bg-slate-950 text-slate-300 hover:bg-slate-800 cursor-pointer focus:outline-none focus:border-emerald-400/60">
+            {% set period_labels = {"hour": "/hr", "day": "/day", "month": "/mo", "year": "/yr"} %}
+            {% for p in salary_period_supported %}
+              <option value="{{ p }}" {% if default_salary_period == p %}selected{% endif %}>{{ period_labels[p] }}</option>
+            {% endfor %}
+          </select>
+        </form>
         <form method="post" action="/currency" class="inline-flex">
           <input type="hidden" name="next" value="{{ request.url.path }}" />
           <select name="currency"

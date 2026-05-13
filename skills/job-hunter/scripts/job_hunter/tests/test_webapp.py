@@ -501,6 +501,75 @@ def test_converted_column_renders_with_mocked_rates(
     assert "514,01" in r.text or "514,02" in r.text
 
 
+def test_set_salary_period_cookie(client: TestClient) -> None:
+    r = client.post(
+        "/salary-period", data={"period": "hour", "next": "/jobs"}, follow_redirects=False
+    )
+    assert r.status_code == 303
+    assert "salary_period=hour" in r.headers.get("set-cookie", "")
+
+
+def test_set_salary_period_invalid_falls_back_to_default(client: TestClient) -> None:
+    r = client.post(
+        "/salary-period", data={"period": "decade", "next": "/jobs"}, follow_redirects=False
+    )
+    assert "salary_period=year" in r.headers.get("set-cookie", "")  # DEFAULT_DISPLAY
+
+
+def test_salary_renders_with_period_suffix(client: TestClient, job_hunter_home: Path) -> None:
+    """Annual salary renders /yr by default; switching cookie to hour converts + relabels."""
+    import json as _json
+
+    from job_hunter.db import get_engine
+    from job_hunter.models import Job
+    from job_hunter.paths import resolve
+
+    paths = resolve()
+    eng = get_engine(paths)
+    # Insert directly so we can set salary_period (the helper doesn't accept it yet).
+    from datetime import UTC, datetime
+
+    with Session(eng) as s:
+        now = datetime.now(UTC)
+        job = Job(
+            source="remoteok",
+            external_id="t1",
+            url="https://example.test/t1",
+            title="Annual Role",
+            company="Acme",
+            salary_min=104000,
+            salary_max=None,
+            currency="USD",
+            salary_period="year",
+            scraped_at=now,
+            posted_at=now,
+            fingerprint="t1",
+            tags=_json.dumps(["test"]),
+        )
+        s.add(job)
+        s.commit()
+        s.refresh(job)
+        from job_hunter.models import Application, Stage
+
+        s.add(
+            Application(
+                job_id=job.id or 0,
+                current_stage=Stage.DISCOVERED.value,
+                updated_at=now,
+            )
+        )
+        s.commit()
+
+    # Default = year. Salary renders with /yr suffix at full amount.
+    r = client.get("/jobs")
+    assert "$ 104,000/yr" in r.text
+
+    # Switch to hourly. 104_000 / 2080 = 50.
+    client.cookies.set("salary_period", "hour")
+    r = client.get("/jobs")
+    assert "$ 50/hr" in r.text
+
+
 def test_tracker_filters_by_tag(client: TestClient, job_hunter_home: Path) -> None:
     _insert_job(
         job_hunter_home,

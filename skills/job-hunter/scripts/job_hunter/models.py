@@ -12,6 +12,13 @@ from enum import StrEnum
 from sqlmodel import Field, SQLModel
 
 
+class SalaryPeriod(StrEnum):
+    HOUR = "hour"
+    DAY = "day"
+    MONTH = "month"
+    YEAR = "year"
+
+
 class Stage(StrEnum):
     DISCOVERED = "discovered"
     QUEUED = "queued"
@@ -79,6 +86,7 @@ class Job(SQLModel, table=True):
     scraped_at: datetime
     fingerprint: str = Field(index=True)
     tags: str | None = None  # JSON-encoded list[str]; None if source provided none
+    salary_period: str | None = None  # "hour" | "day" | "month" | "year" | None
 
 
 class Application(SQLModel, table=True):

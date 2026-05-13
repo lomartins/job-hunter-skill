@@ -35,7 +35,7 @@ from ..models import (
     Stage,
     StageHistory,
 )
-from . import fx, i18n
+from . import fx, i18n, salary_view
 from .scoring import score_job
 
 FLAG_VALUES = ("broken", "suspicious", "spam", "not_fit")
@@ -73,10 +73,16 @@ def _get_currency(request: Request) -> str:
     return raw if raw in fx.SUPPORTED else fx.DEFAULT
 
 
+def _get_salary_period(request: Request) -> str:
+    raw = (request.cookies.get("salary_period") or salary_view.DEFAULT_DISPLAY).lower()
+    return raw if raw in salary_view.SUPPORTED else salary_view.DEFAULT_DISPLAY
+
+
 def _render(request: Request, name: str, ctx: dict[str, Any]) -> Response:
     templates = request.app.state.templates
     locale = _get_locale(request)
     currency = _get_currency(request)
+    period = _get_salary_period(request)
     ctx = {
         **ctx,
         "request": request,
@@ -84,6 +90,8 @@ def _render(request: Request, name: str, ctx: dict[str, Any]) -> Response:
         "default_currency": currency,
         "currency_symbol": fx.symbol(currency),
         "currency_supported": fx.SUPPORTED,
+        "default_salary_period": period,
+        "salary_period_supported": salary_view.SUPPORTED,
         "t": lambda key: i18n.t(locale, key),
         "stages": [s.value for s in Stage],
         "active_stages": [s.value for s in ACTIVE_STAGES],
@@ -187,49 +195,79 @@ def _apply_sort(rows: list[JobRow], sort: str) -> list[JobRow]:
     return sorted(rows, key=_date_key, reverse=True)
 
 
-def _format_salary(j: Job, locale: str) -> str:
-    """Format the source salary with its native currency prefix (R$, $, €, …)."""
+def _format_salary(j: Job, locale: str, display_period: str) -> str:
+    """Format the source salary in `display_period` with its native currency prefix.
+
+    Periods are converted using `salary_view.convert`. NULL source period is
+    treated as the salary_view fallback (year), matching most tech postings.
+    """
     lo, hi, cur = j.salary_min, j.salary_max, j.currency
     if lo is None and hi is None:
         return "—"
     raw_cur = (cur or "").upper().strip()
     prefix = fx.symbol(raw_cur) if raw_cur else ("R$" if locale == "pt_BR" else "$")
+    src_period = salary_view.normalize(j.salary_period)
+    suf = salary_view.suffix(display_period, locale=locale)
+
+    def _conv(v: int) -> int:
+        return int(round(salary_view.convert(float(v), src_period, display_period)))
+
     if lo is not None and hi is not None and lo != hi:
-        return f"{prefix} {lo:,}–{hi:,}"
+        return f"{prefix} {_conv(lo):,}–{_conv(hi):,}{suf}"
     one = hi if lo is None else lo
-    return f"{prefix} {one:,}"
+    assert one is not None
+    return f"{prefix} {_conv(one):,}{suf}"
 
 
-def _format_converted(j: Job, default_currency: str, rates: fx.Rates | None) -> str:
-    """Convert the source salary to `default_currency`. '—' if unconvertible/identical."""
+def _format_converted(
+    j: Job,
+    default_currency: str,
+    rates: fx.Rates | None,
+    display_period: str,
+    locale: str,
+) -> str:
+    """Convert salary to `default_currency` AND `display_period`.
+
+    Returns '—' when source currency equals target currency *and* source
+    period equals display period — i.e. the converted column would just
+    repeat the native column.
+    """
     lo, hi, cur = j.salary_min, j.salary_max, j.currency
     if lo is None and hi is None:
         return "—"
     if not cur:
         return "—"
     cur = cur.upper().strip()
-    if cur == default_currency.upper():
-        return "—"  # same currency — no point repeating the column
-    if rates is None:
+    src_period = salary_view.normalize(j.salary_period)
+    same_currency = cur == default_currency.upper()
+    same_period = src_period == display_period
+    if same_currency and same_period:
+        return "—"
+    if not same_currency and rates is None:
         return "—"
 
     def _conv(v: int) -> int | None:
-        out = fx.convert(float(v), cur, default_currency, rates)
+        # First: period in source currency. Cheap and lossless even when no FX.
+        period_converted = salary_view.convert(float(v), src_period, display_period)
+        if same_currency:
+            return int(round(period_converted))
+        out = fx.convert(period_converted, cur, default_currency, rates)
         return None if out is None else int(round(out))
 
     prefix = fx.symbol(default_currency)
+    suf = salary_view.suffix(display_period, locale=locale)
     if lo is not None and hi is not None and lo != hi:
         lo_c = _conv(lo)
         hi_c = _conv(hi)
         if lo_c is None or hi_c is None:
             return "—"
-        return f"≈ {prefix} {lo_c:,}–{hi_c:,}"
+        return f"≈ {prefix} {lo_c:,}–{hi_c:,}{suf}"
     one = hi if lo is None else lo
     assert one is not None
     one_c = _conv(one)
     if one_c is None:
         return "—"
-    return f"≈ {prefix} {one_c:,}"
+    return f"≈ {prefix} {one_c:,}{suf}"
 
 
 def _get_pair(session: Session, job_id: int) -> tuple[Job, Application]:
@@ -279,12 +317,15 @@ def register(app: FastAPI) -> None:
             sorted_rows = _apply_sort(filtered, sort)
             locale = _get_locale(request)
             default_currency = _get_currency(request)
+            display_period = _get_salary_period(request)
             rates = fx.load_rates(request.app.state.paths)
             view = [
                 {
                     "row": r,
-                    "salary": _format_salary(r.job, locale),
-                    "salary_converted": _format_converted(r.job, default_currency, rates),
+                    "salary": _format_salary(r.job, locale, display_period),
+                    "salary_converted": _format_converted(
+                        r.job, default_currency, rates, display_period, locale
+                    ),
                 }
                 for r in sorted_rows
             ]
@@ -328,6 +369,7 @@ def register(app: FastAPI) -> None:
             report = validate_fit(job)
             locale = _get_locale(request)
             default_currency = _get_currency(request)
+            display_period = _get_salary_period(request)
             rates = fx.load_rates(request.app.state.paths)
             ctx = {
                 "job": job,
@@ -336,8 +378,10 @@ def register(app: FastAPI) -> None:
                 "score": score,
                 "tags": list(_parse_tags(job.tags)),
                 "report": report,
-                "salary": _format_salary(job, locale),
-                "salary_converted": _format_converted(job, default_currency, rates),
+                "salary": _format_salary(job, locale, display_period),
+                "salary_converted": _format_converted(
+                    job, default_currency, rates, display_period, locale
+                ),
             }
             return _render(request, "detail.html", ctx)
 
@@ -619,6 +663,20 @@ def register(app: FastAPI) -> None:
         target = next if next.startswith("/") else "/jobs"
         resp = RedirectResponse(url=target, status_code=303)
         resp.set_cookie("currency", normalized, max_age=60 * 60 * 24 * 365)
+        return resp
+
+    @app.post("/salary-period")
+    def set_salary_period(
+        request: Request,
+        period: str = Form(...),
+        next: str = Form(default="/jobs"),
+    ) -> Response:
+        normalized = period.lower().strip()
+        if normalized not in salary_view.SUPPORTED:
+            normalized = salary_view.DEFAULT_DISPLAY
+        target = next if next.startswith("/") else "/jobs"
+        resp = RedirectResponse(url=target, status_code=303)
+        resp.set_cookie("salary_period", normalized, max_age=60 * 60 * 24 * 365)
         return resp
 
 

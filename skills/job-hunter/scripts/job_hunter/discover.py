@@ -113,6 +113,7 @@ def upsert_posting(sess: Session, posting: JobPosting) -> tuple[int, bool]:
             scraped_at=now,
             fingerprint=posting.fingerprint(),
             tags=_dump_tags(posting.tags),
+            salary_period=posting.salary_period,
         )
         sess.add(job)
         sess.commit()
@@ -134,6 +135,7 @@ def upsert_posting(sess: Session, posting: JobPosting) -> tuple[int, bool]:
     existing.salary_min = posting.salary_min or existing.salary_min
     existing.salary_max = posting.salary_max or existing.salary_max
     existing.currency = posting.currency or existing.currency
+    existing.salary_period = posting.salary_period or existing.salary_period
     existing.description = posting.description or existing.description
     if posting.raw_payload:
         existing.raw_payload = _dump_payload(posting.raw_payload)

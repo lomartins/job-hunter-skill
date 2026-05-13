@@ -6,6 +6,43 @@ The plugin's version is the source of truth and is mirrored in `.claude-plugin/m
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-05-13
+
+Salary postings carry a period now (hour / day / month / year) and the
+webapp lets you pick what unit to display in.
+
+### Added
+- **`jobs.salary_period` column** (migration `004_salary_period.sql`).
+  Values: `hour | day | month | year | NULL`. NULL falls back to `year`
+  at render time, matching most tech postings.
+- **`SalaryPeriod` enum** in `models.py`; new `JobPosting.salary_period`
+  dataclass field; discover upsert persists + preserves on re-scrape.
+- **RemoteOK source emits `year`** (its `salary_min/max` are always
+  annual). Other sources can opt in by setting `posting.salary_period`.
+- **Period dropdown in the webapp top bar** (`/hr · /day · /mo · /yr`),
+  cookie-persisted year-long. Auto-submits on change.
+- **Salary column suffix** matches the chosen display period
+  (`$ 50/hr`, `R$ 8,000/mo`, etc.) and converts using industry-standard
+  work assumptions: 40 hr/week × 52 weeks = 2080 hr/year; 8 hr/day; 260
+  work days/year.
+- **Converted column** stacks period + currency conversion. A job
+  posted at `$ 104,000/yr` in USD shows as `≈ R$ 5,485/hr` with the
+  display set to BRL + /hr.
+
+### Tests
+- 9 new salary_view unit tests (normalize, round-trip, every direction
+  in the conversion table).
+- 3 new webapp tests (period cookie set/invalid, salary renders with
+  per-period suffix and re-renders correctly when cookie flips).
+- 207 total pass (was 189).
+
+### Fixed
+- **CI**: previous releases shipped 3 files (`test_fx.py`,
+  `test_webapp.py`, `webapp/app.py`) that hadn't been through
+  `ruff format` — the CI's `ruff format --check .` caught them on each
+  push. Format pass applied; local lint now runs the full repo before
+  commit.
+
 ## [0.12.3] - 2026-05-13
 
 ### Added
