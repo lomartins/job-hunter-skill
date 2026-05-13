@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="mb-5">
+  <h1 class="text-2xl font-semibold tracking-tight">{{ t("metrics.title") }}</h1>
+</section>
+
+<div id="totals" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6"></div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+  <article class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+    <h2 class="text-sm uppercase tracking-wider text-slate-400 mb-3">{{ t("metrics.applications_per_day") }}</h2>
+    <canvas id="chart-daily" height="120"></canvas>
+  </article>
+  <article class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+    <h2 class="text-sm uppercase tracking-wider text-slate-400 mb-3">{{ t("metrics.applications_per_week") }}</h2>
+    <canvas id="chart-weekly" height="120"></canvas>
+  </article>
+  <article class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+    <h2 class="text-sm uppercase tracking-wider text-slate-400 mb-3">{{ t("metrics.by_stage") }}</h2>
+    <canvas id="chart-stage" height="180"></canvas>
+  </article>
+  <article class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+    <h2 class="text-sm uppercase tracking-wider text-slate-400 mb-3">{{ t("metrics.by_source") }}</h2>
+    <canvas id="chart-source" height="180"></canvas>
+  </article>
+</div>
+
+<script>
+  const T = {
+    total_jobs: {{ t("metrics.total_jobs") | tojson }},
+    total_applied: {{ t("metrics.total_applied") | tojson }},
+    in_pipeline: {{ t("metrics.in_pipeline") | tojson }},
+    flagged: {{ t("metrics.flagged") | tojson }},
+  };
+  const stageLabels = {
+    {% for s in stages %}
+      "{{ s }}": {{ t("stage." ~ s) | tojson }},
+    {% endfor %}
+  };
+
+  function statCard(label, value) {
+    return `
+      <div class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+        <p class="text-xs uppercase tracking-wider text-slate-400">${label}</p>
+        <p class="text-3xl font-semibold mt-1 text-slate-100 font-mono">${value}</p>
+      </div>
+    `;
+  }
+
+  const gridColor = "rgba(148, 163, 184, 0.1)";
+  const tickColor = "rgba(148, 163, 184, 0.8)";
+
+  Chart.defaults.color = tickColor;
+  Chart.defaults.borderColor = gridColor;
+
+  fetch("/api/metrics.json").then(r => r.json()).then(data => {
+    document.getElementById("totals").innerHTML =
+      statCard(T.total_jobs, data.totals.jobs) +
+      statCard(T.total_applied, data.totals.applied) +
+      statCard(T.in_pipeline, data.totals.in_pipeline) +
+      statCard(T.flagged, data.totals.flagged);
+
+    new Chart(document.getElementById("chart-daily"), {
+      type: "bar",
+      data: {
+        labels: data.daily.labels,
+        datasets: [{ data: data.daily.values, backgroundColor: "rgba(16,185,129,0.6)", borderRadius: 3 }]
+      },
+      options: { plugins: { legend: { display: false } }, scales: { x: { grid: { color: gridColor } }, y: { grid: { color: gridColor }, beginAtZero: true, ticks: { precision: 0 } } } }
+    });
+
+    new Chart(document.getElementById("chart-weekly"), {
+      type: "line",
+      data: {
+        labels: data.weekly.labels,
+        datasets: [{ data: data.weekly.values, borderColor: "rgba(16,185,129,0.9)", backgroundColor: "rgba(16,185,129,0.15)", fill: true, tension: 0.3, pointRadius: 3 }]
+      },
+      options: { plugins: { legend: { display: false } }, scales: { x: { grid: { color: gridColor } }, y: { grid: { color: gridColor }, beginAtZero: true, ticks: { precision: 0 } } } }
+    });
+
+    new Chart(document.getElementById("chart-stage"), {
+      type: "doughnut",
+      data: {
+        labels: Object.keys(data.by_stage).map(k => stageLabels[k] || k),
+        datasets: [{
+          data: Object.values(data.by_stage),
+          backgroundColor: ["#10b981","#06b6d4","#a78bfa","#f59e0b","#ef4444","#64748b","#3b82f6","#22d3ee","#fb7185","#facc15","#94a3b8"]
+        }]
+      },
+      options: { plugins: { legend: { position: "right" } } }
+    });
+
+    new Chart(document.getElementById("chart-source"), {
+      type: "bar",
+      data: {
+        labels: Object.keys(data.by_source),
+        datasets: [{ data: Object.values(data.by_source), backgroundColor: "rgba(99,102,241,0.6)", borderRadius: 3 }]
+      },
+      options: { indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { grid: { color: gridColor }, beginAtZero: true, ticks: { precision: 0 } }, y: { grid: { color: gridColor } } } }
+    });
+  });
+</script>
+{% endblock %}

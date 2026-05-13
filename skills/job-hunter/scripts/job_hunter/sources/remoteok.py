@@ -81,9 +81,10 @@ def _to_posting(item: dict[str, object]) -> JobPosting:
     title = _opt_str(item.get("position")) or _opt_str(item.get("title")) or "Unknown"
     company = _opt_str(item.get("company")) or "Unknown"
     description = _opt_str(item.get("description"))
-    tags = item.get("tags", [])
-    if not isinstance(tags, list):
-        tags = []
+    raw_tags = item.get("tags", [])
+    if not isinstance(raw_tags, list):
+        raw_tags = []
+    tags = [t.strip().lower() for t in raw_tags if isinstance(t, str) and t.strip()]
 
     return JobPosting(
         source="remoteok",
@@ -99,6 +100,7 @@ def _to_posting(item: dict[str, object]) -> JobPosting:
         posted_at=posted_at,
         description=description,
         raw_payload={"tags": tags, "id": item.get("id")},
+        tags=tags,
     )
 
 

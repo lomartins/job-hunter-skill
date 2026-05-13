@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block main_class %}w-full px-5 py-6{% endblock %}
+{% block content %}
+<section class="mb-5 flex items-end justify-between gap-4 flex-wrap">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">{{ t("tracker.title") }}</h1>
+    <p class="text-xs text-slate-500 mt-1">Drag cards between columns — stage updates save automatically.</p>
+  </div>
+  <span id="tracker-status" class="text-xs font-mono text-slate-500"></span>
+</section>
+
+<div class="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory lg:snap-none" id="tracker-board">
+  {% for stage, items in columns %}
+    <section class="snap-start min-w-[200px] flex-1 basis-0 rounded-xl border border-slate-800 bg-slate-900/40 flex flex-col"
+             data-stage="{{ stage }}">
+      <header class="flex items-center justify-between px-3 py-2 border-b border-slate-800">
+        <h2 class="text-xs uppercase tracking-wider text-slate-300">{{ t("stage." ~ stage) }}</h2>
+        <span class="text-xs font-mono text-slate-500" data-count>{{ items|length }}</span>
+      </header>
+      <ul class="p-2 space-y-2 max-h-[70vh] overflow-y-auto flex-1 jh-dropzone"
+          data-stage-list="{{ stage }}">
+        {% for r in items %}
+          <li class="jh-card group rounded-lg border border-slate-800 bg-slate-950 p-2.5 cursor-grab active:cursor-grabbing select-none transition-shadow hover:border-slate-700"
+              data-job-id="{{ r.job.id }}">
+            <a href="/jobs/{{ r.job.id }}" class="block jh-card-link">
+              <p class="text-[10px] uppercase tracking-wider text-slate-500 font-mono">{{ r.job.source }}</p>
+              <p class="text-sm text-slate-200 leading-snug">{{ r.job.title }}</p>
+              <p class="text-xs text-slate-400 mt-0.5">{{ r.job.company }}</p>
+              <div class="flex items-center gap-2 mt-2">
+                {% set s = r.match_score %}
+                {% set tone = 'bg-emerald-500/15 text-emerald-300' if s >= 75 else ('bg-amber-500/15 text-amber-200' if s >= 50 else 'bg-rose-500/15 text-rose-300') %}
+                <span class="inline-flex items-center justify-center w-9 h-5 rounded text-[11px] font-mono {{ tone }}">{{ s }}</span>
+                {% if r.application.flag %}
+                  <span class="text-[10px] uppercase px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300">{{ t("flag." ~ r.application.flag) }}</span>
+                {% endif %}
+              </div>
+            </a>
+          </li>
+        {% endfor %}
+        {% if not items %}
+          <li class="jh-empty text-xs text-slate-600 text-center py-6 pointer-events-none">{{ t("tracker.empty") }}</li>
+        {% endif %}
+      </ul>
+    </section>
+  {% endfor %}
+</div>
+
+<script>
+(function () {
+  const board = document.getElementById("tracker-board");
+  const statusEl = document.getElementById("tracker-status");
+  if (!board || !window.Sortable) return;
+
+  function flash(text, tone = "slate") {
+    if (!statusEl) return;
+    const toneClass = tone === "ok" ? "text-emerald-300" : tone === "err" ? "text-rose-300" : "text-slate-400";
+    statusEl.className = "text-xs font-mono " + toneClass;
+    statusEl.textContent = text;
+    if (tone !== "err") {
+      clearTimeout(flash._t);
+      flash._t = setTimeout(() => { statusEl.textContent = ""; }, 1800);
+    }
+  }
+
+  function refreshColumnCount(list) {
+    const card = list.closest("section");
+    if (!card) return;
+    const counter = card.querySelector("[data-count]");
+    if (counter) counter.textContent = list.querySelectorAll(".jh-card").length;
+    // Hide/show the "empty" placeholder.
+    const empty = list.querySelector(".jh-empty");
+    const cards = list.querySelectorAll(".jh-card").length;
+    if (empty) empty.style.display = cards === 0 ? "" : "none";
+  }
+
+  // Suppress accidental navigation when the drag started on the anchor.
+  // SortableJS prevents the default click reliably, but Safari can fire one
+  // click on dragend; this is a belt-and-suspenders.
+  let suppressClick = false;
+  board.addEventListener(
+    "click",
+    (e) => {
+      if (suppressClick) {
+        e.preventDefault();
+        e.stopPropagation();
+        suppressClick = false;
+      }
+    },
+    true,
+  );
+
+  document.querySelectorAll(".jh-dropzone").forEach((list) => {
+    new Sortable(list, {
+      group: "stages",
+      animation: 180,
+      easing: "cubic-bezier(0.2, 0, 0, 1)",
+      ghostClass: "jh-ghost",
+      chosenClass: "jh-chosen",
+      dragClass: "jh-drag",
+      forceFallback: true,        // unified visual across browsers
+      fallbackOnBody: true,
+      fallbackTolerance: 4,
+      draggable: ".jh-card",      // li-level dragging; click handling done below
+      onStart() { suppressClick = false; },
+      onMove(evt) {
+        document.querySelectorAll(".sortable-receiving").forEach((el) => el.classList.remove("sortable-receiving"));
+        if (evt.to) evt.to.classList.add("sortable-receiving");
+        return true;
+      },
+      onUnchoose() {
+        document.querySelectorAll(".sortable-receiving").forEach((el) => el.classList.remove("sortable-receiving"));
+      },
+      onEnd(evt) {
+        const fromList = evt.from;
+        const toList = evt.to;
+        // Was this a drag (vs. click)?
+        if (fromList === toList && evt.oldIndex === evt.newIndex) return;
+        suppressClick = true;     // we just dragged — eat the trailing click
+
+        const newStage = toList.dataset.stageList;
+        const jobId = evt.item.dataset.jobId;
+        if (!newStage || !jobId) return;
+
+        // Optimistic counters now; server source of truth in a moment.
+        refreshColumnCount(fromList);
+        refreshColumnCount(toList);
+
+        evt.item.classList.add("jh-saving");
+        const body = new FormData();
+        body.set("stage", newStage);
+        body.set("note", "moved via tracker drag");
+
+        fetch(`/jobs/${jobId}/stage`, {
+          method: "POST",
+          body,
+          headers: { "HX-Request": "true" },
+        })
+          .then((r) => {
+            evt.item.classList.remove("jh-saving");
+            if (r.status >= 200 && r.status < 400) {
+              evt.item.classList.add("jh-saved");
+              setTimeout(() => evt.item.classList.remove("jh-saved"), 700);
+              flash(`→ ${newStage}`, "ok");
+            } else {
+              throw new Error(`HTTP ${r.status}`);
+            }
+          })
+          .catch((err) => {
+            evt.item.classList.remove("jh-saving");
+            evt.item.classList.add("jh-failed");
+            flash(`save failed (${err.message}) — refresh to retry`, "err");
+            // Revert: move back where it came from at the previous index.
+            const ref = fromList.children[evt.oldIndex] || null;
+            fromList.insertBefore(evt.item, ref);
+            refreshColumnCount(fromList);
+            refreshColumnCount(toList);
+            setTimeout(() => evt.item.classList.remove("jh-failed"), 1200);
+          });
+      },
+    });
+  });
+})();
+</script>
+{% endblock %}

@@ -78,6 +78,7 @@ class Job(SQLModel, table=True):
     raw_payload: str | None = None  # JSON-encoded
     scraped_at: datetime
     fingerprint: str = Field(index=True)
+    tags: str | None = None  # JSON-encoded list[str]; None if source provided none
 
 
 class Application(SQLModel, table=True):
@@ -92,6 +93,10 @@ class Application(SQLModel, table=True):
     notes: str | None = None
     adapter_used: str | None = None
     updated_at: datetime
+    flag: str | None = None  # "broken" | "suspicious" | "spam" | "not_fit"
+    flag_reason: str | None = None
+    flag_at: datetime | None = None
+    match_score: int | None = None  # 0..100, cached from validate_fit
 
 
 class StageHistory(SQLModel, table=True):

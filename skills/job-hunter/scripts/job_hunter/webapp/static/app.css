@@ -1,0 +1,101 @@
+/* Small polish on top of Tailwind. Keep this lean. */
+body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+::selection { background: rgba(16, 185, 129, 0.35); }
+input, select, textarea { outline: none; }
+input:focus, select:focus, textarea:focus {
+  border-color: rgba(16, 185, 129, 0.6);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);
+}
+.htmx-request select, .htmx-request input { opacity: 0.85; }
+
+/* Themed scrollbars to match the slate-950 surface. Chromium first, then
+   Firefox fallback via scrollbar-color. Track is barely-there; thumb is a
+   slightly lighter slate that hovers to emerald. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(51 65 85) transparent; /* slate-700 on transparent */
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(51 65 85);          /* slate-700 */
+  border-radius: 9999px;
+  border: 2px solid transparent;      /* shrinks the visible thumb */
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(16 185 129);        /* emerald-500 */
+  background-clip: content-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ── Tracker drag-and-drop ─────────────────────────────────────────────── */
+
+/* The card the cursor is dragging — full-color, lifted, slight tilt. */
+.jh-drag {
+  cursor: grabbing !important;
+  transform: rotate(1.5deg) scale(1.03);
+  box-shadow:
+    0 18px 30px -10px rgba(0, 0, 0, 0.6),
+    0 6px 12px -4px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(16, 185, 129, 0.5);
+  border-color: rgba(16, 185, 129, 0.6) !important;
+  background-color: rgb(2 6 23) !important;          /* slate-950 */
+  opacity: 0.98;
+}
+
+/* The placeholder left behind in the source column while dragging. */
+.jh-ghost {
+  opacity: 0.35;
+  background: rgba(16, 185, 129, 0.05) !important;
+  border-style: dashed !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+.jh-ghost > * { visibility: hidden; }
+
+/* While the mouse holds the card before drag actually starts. */
+.jh-chosen {
+  cursor: grabbing;
+}
+
+/* Persistence feedback. */
+@keyframes jh-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.25); }
+  50%      { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+}
+.jh-saving {
+  animation: jh-pulse 1.1s ease-out infinite;
+  border-color: rgba(16, 185, 129, 0.5);
+}
+.jh-saved {
+  transition: box-shadow 0.6s ease-out, border-color 0.6s ease-out;
+  border-color: rgba(16, 185, 129, 0.7);
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.18);
+}
+.jh-failed {
+  border-color: rgba(244, 63, 94, 0.7) !important;   /* rose-500 */
+  box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.18);
+  transition: box-shadow 0.6s ease-out, border-color 0.6s ease-out;
+}
+
+/* Smooth the rearrangement of remaining cards (Sortable adds inline
+   transform during animation; this just makes any class/layout transitions
+   on cards feel coherent). */
+.jh-card {
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1),
+              box-shadow 180ms ease,
+              border-color 180ms ease;
+}
+
+/* Drop-target column gets a subtle inner glow while a card hovers over it. */
+.jh-dropzone.sortable-receiving {
+  background: rgba(16, 185, 129, 0.04);
+}

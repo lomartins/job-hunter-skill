@@ -6,6 +6,122 @@ The plugin's version is the source of truth and is mirrored in `.claude-plugin/m
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-05-13
+
+Storage and UI for job tags, plus a Claude Code command launcher and split
+Open / Apply controls on the job detail page.
+
+### Added
+- **Tags on jobs.** Migration `003_job_tags.sql` adds `jobs.tags` as a
+  JSON-encoded `list[str]`. `JobPosting.tags` is now a first-class field on
+  the source dataclass. `RemoteOK` source backfills tags from its public
+  payload; other sources can opt in by setting `posting.tags`. Discover
+  upsert preserves prior tags on re-scrape (union, dedup, preserve order).
+- **Tag filter and chips in the webapp.**
+  - `/jobs?tag=kotlin&tag=android` filters with AND semantics.
+  - "Top tags" row above the listing showing the 30 most common tags;
+    click to toggle on/off; "Clear" wipes the active set.
+  - Inline tag pills under each title in the table (max 6, then "+N").
+  - Detail page renders a Tags panel with chip links into `/jobs?tag=…`.
+- **Claude Code command launcher** on the job detail page. One copy-to-
+  clipboard button each for:
+  - `/job-hunter:apply <id>` — existing apply flow (shadow mode by default).
+  - `/job-hunter:dig <id>` — new slash command that re-fetches the JD,
+    runs `validate`, and produces a one-screen brief (snapshot, why-fit,
+    friction, tailoring angles, next move). PII rules still apply.
+  - `/job-hunter:tailor-resume <id>` — new slash command that emits a
+    [Reactive Resume](https://github.com/amruthpillai/reactive-resume) JSON
+    file tailored to the JD using `~/.config/job-hunter/profile.yaml`,
+    deliberately leaving PII fields (email/phone/address/birthdate) empty
+    so the user fills them in the Reactive Resume UI after import.
+- **Open / Mark applied split.** Job detail now shows three controls:
+  `Open ↗` (no DB change), `✓ Mark applied` (transition only), and
+  `Open & mark applied ↗` (existing behavior). Already-applied jobs show
+  a static "applied ✓" badge in place of the buttons.
+- **Pipeline tracker now full-width.** `base.html` exposes a `main_class`
+  Jinja block so per-page templates can opt out of the `max-w-7xl`
+  container. Tracker uses `w-full px-5 py-6`. Columns shrink with
+  `flex-1 basis-0 min-w-[200px]`, gaining ~113px back on 1280–1440px
+  screens before horizontal scroll kicks in. Snap-scroll on small
+  viewports.
+
+### Tests
+- 6 new webapp tests covering single + multi-tag filtering, tag chip
+  rendering on detail, Claude Code commands rendering, and top-tags row
+  visibility. 169 total pass.
+
+### Internal
+- New Jinja globals `tag_toggle_query()` and `tag_clear_query()` build
+  the query string for chip toggle links without leaking other filters.
+- `JobRow` carries a `tags: tuple[str, ...]` field decoded once at row
+  load.
+
+## [0.11.0] - 2026-05-13
+
+Local webapp for browsing, triaging, and manually updating the pipeline in a
+browser instead of the CLI. Pure addition — no breaking changes to existing
+commands or DB rows.
+
+### Added
+- **`job-hunter web` CLI verb** launches a local FastAPI + HTMX + Tailwind
+  app bound to `127.0.0.1:8765` by default. `--no-open` skips browser
+  launch; `--port` overrides. `--host 0.0.0.0` is accepted but prints a
+  warning because the app has no auth.
+- **Joblist view** with filter (stage / source / flag / search) and sort
+  (match / date / salary / company). HTMX swaps the table inline as you
+  type or change a filter; browser URL stays canonical via `hx-push-url`.
+- **Per-job detail page** with: stage transition (writes `StageHistory`
+  with a note), inline notes editor (HTMX save indicator), report-as flag
+  (broken / suspicious / spam / not-a-fit, with optional reason), direct
+  edit of `location` / `salary_min` / `salary_max` / `currency` / `remote`,
+  and a one-click "open posting + mark applied" link.
+- **Match score 0–100** derived from `validate_fit()` concerns
+  (block = -40, warn = -15, note = -5, floored at 0). Cached on the
+  `applications.match_score` column; recomputed lazily on first render and
+  on field edits.
+- **Tracker view** — kanban-style columns grouped by stage (discovered →
+  withdrawn), sorted by `updated_at` within each column. Cards drag
+  between columns via SortableJS with FLIP animation; drop posts to
+  `/jobs/<id>/stage` with `HX-Request`, which returns `204` on success.
+  Optimistic UI updates counts and the empty-state placeholder before the
+  network round-trip; failure reverts the card to its prior column and
+  flashes a rose-tinted error banner.
+- **Metrics view** powered by Chart.js with 4 panels: apps-per-day (last
+  30), apps-per-week (last 12), by-stage doughnut, by-source bar, plus
+  total counters (jobs, applied, in-pipeline, flagged). Data feed at
+  `GET /api/metrics.json`.
+- **i18n** for the whole UI in PT-BR and EN with a header toggle that
+  stores the choice in a year-long `lang` cookie. Strings live in
+  `webapp/i18n_data/{en,pt_BR}.json`; missing keys render as the key for
+  visible debugging.
+- **DB migration `002_webapp_flags.sql`** adds `flag`, `flag_reason`,
+  `flag_at`, `match_score` columns to `applications` plus indexes on
+  `flag` and `match_score`. Idempotent (additive only).
+- **`/job-hunter:web` slash command** under `skills/job-hunter/commands/`.
+
+### Dependencies
+- `fastapi>=0.115,<0.116`
+- `uvicorn[standard]>=0.32,<0.33`
+- `jinja2>=3.1.4,<4`
+- `python-multipart>=0.0.20,<0.1`
+
+Tailwind, Chart.js, HTMX, and SortableJS are loaded from CDN — no Node
+build step.
+
+### Tests
+- `tests/test_webapp.py` — 20 new tests covering: empty render, joblist
+  filters & sorts, stage transitions writing history, flag set/clear,
+  notes update via HTMX, field edit (incl. BR currency uppercasing),
+  apply redirect with/without `mark=1`, metrics JSON shape, language
+  cookie toggle, PT-BR render of translated strings, detail 404, HTMX
+  partial swap (no base layout).
+
+### Security note
+The webapp binds 127.0.0.1 by default and has no auth. Notes contain
+free-text the user typed — do not expose to LAN/internet without adding an
+auth layer. The PII isolation guarantees still apply: the webapp never
+reads `personal.env`, only the SQLite DB.
+
 ## [0.10.0] - 2026-05-13
 
 Addresses items from the auto-apply-pipeline handoff doc.

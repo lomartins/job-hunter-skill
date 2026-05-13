@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title_suffix %} — {{ job.company }}: {{ job.title }}{% endblock %}
+{% block content %}
+<div class="flex items-start justify-between gap-4 mb-6">
+  <div>
+    <p class="text-xs font-mono uppercase tracking-wider text-slate-500">
+      {{ job.source }} · #{{ job.id }}
+    </p>
+    <h1 class="text-2xl font-semibold tracking-tight mt-1">{{ job.title }}</h1>
+    <p class="text-slate-300 mt-0.5">{{ job.company }} · <span class="text-slate-400">{{ job.location or t("common.unknown") }}</span></p>
+  </div>
+  <div class="text-right">
+    {% set tone = 'bg-emerald-500/15 text-emerald-300' if score >= 75 else ('bg-amber-500/15 text-amber-200' if score >= 50 else 'bg-rose-500/15 text-rose-300') %}
+    <span class="inline-flex items-center justify-center w-16 h-10 rounded-lg text-2xl font-mono {{ tone }}">{{ score }}</span>
+    <p class="text-[10px] uppercase tracking-wider text-slate-500 mt-1">{{ t("job.match") }}</p>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+  <section class="lg:col-span-2 space-y-4">
+
+    <article class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+      <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
+        <h2 class="text-sm uppercase tracking-wider text-slate-400">{{ t("job.url") }}</h2>
+        <div class="flex items-center gap-2">
+          <a class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-slate-700 text-slate-200 hover:bg-slate-800 text-sm"
+             target="_blank" rel="noopener noreferrer"
+             href="/jobs/{{ job.id }}/apply">
+            {{ t("job.open_only") }} ↗
+          </a>
+          {% if application.current_stage != "applied" %}
+            <form method="post" action="/jobs/{{ job.id }}/stage" class="inline">
+              <input type="hidden" name="stage" value="applied" />
+              <input type="hidden" name="note" value="marked applied via webapp" />
+              <button class="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 text-sm">
+                ✓ {{ t("job.mark_applied") }}
+              </button>
+            </form>
+          {% else %}
+            <span class="text-xs text-emerald-300 font-mono px-2 py-1 rounded bg-emerald-500/10">{{ t("stage.applied") }} ✓</span>
+          {% endif %}
+        </div>
+      </div>
+      <a class="font-mono text-xs text-slate-400 break-all hover:text-slate-200" href="{{ job.url }}" target="_blank" rel="noopener noreferrer">{{ job.url }}</a>
+    </article>
+
+    {% if report.concerns %}
+      <article class="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+        <h2 class="text-sm uppercase tracking-wider text-amber-300 mb-2">{{ t("job.matched_concerns") }}</h2>
+        <ul class="space-y-1 text-sm">
+          {% for c in report.concerns %}
+            <li class="flex gap-2">
+              <span class="font-mono text-[10px] uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-200">{{ c.severity }}</span>
+              <span class="text-slate-300">{{ c.message }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      </article>
+    {% endif %}
+
+    {% if tags %}
+      <article class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+        <h2 class="text-sm uppercase tracking-wider text-slate-400 mb-3">{{ t("job.tags") }}</h2>
+        <div class="flex flex-wrap gap-1.5">
+          {% for tag in tags %}
+            <a href="/jobs?tag={{ tag | urlencode }}"
+               class="text-xs px-2 py-0.5 rounded-full border border-slate-700 text-slate-300 hover:border-emerald-400/60 hover:bg-emerald-500/10 hover:text-emerald-200 transition">
+              {{ tag }}
+            </a>
+          {% endfor %}
+        </div>
+      </article>
+    {% endif %}
+
+    <article class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+      <header class="flex items-center justify-between mb-3">
+        <h2 class="text-sm uppercase tracking-wider text-slate-400">{{ t("job.claude_commands") }}</h2>
+        <span class="text-[10px] uppercase tracking-wider text-slate-600">claude code</span>
+      </header>
+      <div class="space-y-2">
+        {% set commands = [
+          ("/job-hunter:apply " ~ job.id, t("job.cmd_apply_desc")),
+          ("/job-hunter:dig " ~ job.id, t("job.cmd_dig_desc")),
+          ("/job-hunter:tailor-resume " ~ job.id, t("job.cmd_resume_desc")),
+        ] %}
+        {% for cmd, descr in commands %}
+          <div class="rounded-lg border border-slate-800 bg-slate-950 p-3 group">
+            <div class="flex items-center gap-2">
+              <code class="flex-1 text-sm font-mono text-emerald-300 select-all break-all">{{ cmd }}</code>
+              <button type="button"
+                      class="jh-copy text-[11px] font-mono px-2 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
+                      data-copy="{{ cmd }}"
+                      data-label="{{ t('job.cmd_copy') }}"
+                      data-label-done="{{ t('job.cmd_copied') }}">
+                {{ t("job.cmd_copy") }}
+              </button>
+            </div>
+            <p class="text-xs text-slate-500 mt-1.5 leading-snug">{{ descr }}</p>
+          </div>
+        {% endfor %}
+      </div>
+    </article>
+
+    {% if job.description %}
+      <article class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+        <h2 class="text-sm uppercase tracking-wider text-slate-400 mb-2">{{ t("job.description") }}</h2>
+        <pre class="whitespace-pre-wrap text-sm text-slate-300 leading-relaxed font-sans">{{ job.description | clean_desc }}</pre>
+      </article>
+    {% endif %}
+
+    <article class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+      <h2 class="text-sm uppercase tracking-wider text-slate-400 mb-3">{{ t("job.edit_fields") }}</h2>
+      <form method="post" action="/jobs/{{ job.id }}/fields" class="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <label class="col-span-2 flex flex-col gap-1 text-xs">
+          <span class="uppercase tracking-wider text-slate-500">{{ t("job.location") }}</span>
+          <input name="location" value="{{ job.location or '' }}" class="rounded-md bg-slate-950 border-slate-700 text-sm" />
+        </label>
+        <label class="flex flex-col gap-1 text-xs">
+          <span class="uppercase tracking-wider text-slate-500">min</span>
+          <input name="salary_min" value="{{ job.salary_min if job.salary_min is not none else '' }}" inputmode="numeric" class="rounded-md bg-slate-950 border-slate-700 text-sm font-mono" />
+        </label>
+        <label class="flex flex-col gap-1 text-xs">
+          <span class="uppercase tracking-wider text-slate-500">max</span>
+          <input name="salary_max" value="{{ job.salary_max if job.salary_max is not none else '' }}" inputmode="numeric" class="rounded-md bg-slate-950 border-slate-700 text-sm font-mono" />
+        </label>
+        <label class="flex flex-col gap-1 text-xs">
+          <span class="uppercase tracking-wider text-slate-500">CCY</span>
+          <input name="currency" value="{{ job.currency or '' }}" maxlength="6" class="rounded-md bg-slate-950 border-slate-700 text-sm font-mono uppercase" />
+        </label>
+        <label class="col-span-2 flex flex-col gap-1 text-xs">
+          <span class="uppercase tracking-wider text-slate-500">{{ t("job.remote") }}</span>
+          <select name="remote" class="rounded-md bg-slate-950 border-slate-700 text-sm">
+            <option value="" {% if job.remote is none %}selected{% endif %}>{{ t("job.workplace_unknown") }}</option>
+            <option value="yes" {% if job.remote == true %}selected{% endif %}>{{ t("job.remote_yes") }}</option>
+            <option value="no" {% if job.remote == false %}selected{% endif %}>{{ t("job.remote_no") }}</option>
+          </select>
+        </label>
+        <div class="col-span-2 md:col-span-3 flex items-end">
+          <button class="ml-auto px-4 py-2 rounded-md bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 text-sm">{{ t("common.update") }}</button>
+        </div>
+      </form>
+    </article>
+  </section>
+
+  <aside class="space-y-4">
+    <article class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+      <h2 class="text-sm uppercase tracking-wider text-slate-400 mb-3">{{ t("job.stage") }}</h2>
+      <form method="post" action="/jobs/{{ job.id }}/stage" class="space-y-2">
+        <select name="stage" class="w-full rounded-md bg-slate-950 border-slate-700 text-sm">
+          {% for s in stages %}
+            <option value="{{ s }}" {% if application.current_stage == s %}selected{% endif %}>{{ t("stage." ~ s) }}</option>
+          {% endfor %}
+        </select>
+        <input name="note" placeholder="note (optional)" class="w-full rounded-md bg-slate-950 border-slate-700 text-xs" />
+        <button class="w-full px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-sm">{{ t("common.update") }}</button>
+      </form>
+      <ul class="mt-4 space-y-1 text-xs text-slate-400 font-mono max-h-40 overflow-auto">
+        {% for h in history %}
+          <li>
+            <span class="text-slate-500">{{ h.transitioned_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            <span class="text-slate-300">{{ h.from_stage or '∅' }} → {{ h.to_stage }}</span>
+            {% if h.note %}<span class="text-slate-500"> — {{ h.note }}</span>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </article>
+
+    <article class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+      <h2 class="text-sm uppercase tracking-wider text-slate-400 mb-3">{{ t("job.notes") }}</h2>
+      <form hx-post="/jobs/{{ job.id }}/notes" hx-target="#notes-status" hx-swap="innerHTML">
+        <textarea name="notes" rows="5" class="w-full rounded-md bg-slate-950 border-slate-700 text-sm">{{ application.notes or '' }}</textarea>
+        <div class="flex items-center justify-between mt-2">
+          <span id="notes-status" class="text-xs"></span>
+          <button class="px-3 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-sm">{{ t("job.save") }}</button>
+        </div>
+      </form>
+    </article>
+
+    <article class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+      <h2 class="text-sm uppercase tracking-wider text-slate-400 mb-3">{{ t("job.report") }}</h2>
+      <p class="text-xs text-slate-500 mb-2">{{ t("flag.prompt") }}</p>
+      <form method="post" action="/jobs/{{ job.id }}/flag" class="space-y-2">
+        <div class="grid grid-cols-2 gap-2">
+          {% for f in flag_values %}
+            <button name="flag" value="{{ f }}"
+                    class="px-2.5 py-1.5 rounded-md text-xs border
+                           {% if application.flag == f %}border-rose-400/60 bg-rose-500/15 text-rose-200{% else %}border-slate-700 text-slate-300 hover:bg-slate-800{% endif %}">
+              {{ t("flag." ~ f) }}
+            </button>
+          {% endfor %}
+        </div>
+        <input name="reason" placeholder="reason (optional)" value="{{ application.flag_reason or '' }}" class="w-full rounded-md bg-slate-950 border-slate-700 text-xs" />
+        {% if application.flag %}
+          <button name="flag" value="clear" class="w-full px-2.5 py-1.5 rounded-md text-xs text-slate-300 hover:bg-slate-800">{{ t("flag.clear") }}</button>
+        {% endif %}
+      </form>
+    </article>
+  </aside>
+</div>
+{% endblock %}

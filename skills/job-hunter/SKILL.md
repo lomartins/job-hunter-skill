@@ -2,7 +2,7 @@
 name: job-hunter
 description: "Use this skill when the user asks about job hunting, job applications, scraping job boards, tracking application stages, or filling out job application forms. Triggers include mentions of LinkedIn, Gupy, RemoteOK, Job na Gringa, application tracking, cover letter drafting tied to a tracked job, or any request to apply to a job listing URL. The skill discovers senior mobile / Android / Kotlin Multiplatform openings across BR and international remote markets, tracks each through stages (discovered, queued, applying, applied, screening, technical, behavioral, offer, rejected, withdrawn), and assists with form filling in two modes (shadow and auto) while keeping PII out of model context. Do NOT use for general career advice, resume writing from scratch, or interview coaching unrelated to a tracked job."
 license: Apache-2.0
-version: 0.10.0
+version: 0.12.0
 ---
 
 # job-hunter
@@ -47,6 +47,9 @@ If a user pastes a real CPF or other PII into chat, stop, warn them, and instruc
 /job-hunter:review               # paused adapters + inbox drafts
 /job-hunter:sync                 # regenerate tracking.md
 /job-hunter:doctor               # validate install / perms / deps
+/job-hunter:web                  # launch local triage webapp (FastAPI + HTMX)
+/job-hunter:dig <id>             # re-fetch JD + brief: fit / friction / angles / next move
+/job-hunter:tailor-resume <id>   # Reactive Resume JSON tailored to a JD
 ```
 
 These are thin wrappers around the CLI — Claude executes the relevant `job-hunter` command via `Bash` and formats the result.
@@ -75,6 +78,7 @@ job sync [--no-md-sync]
 job report [--weekly]
 job lint                                          # runs lint_secret_leaks against runtime dirs
 job doctor                                        # validates install, paths, perms
+job web [--host 127.0.0.1] [--port 8765] [--no-open]   # local webapp for triage
 ```
 
 Defaults:
@@ -124,6 +128,7 @@ Navigate without reading everything. One line per file.
 - `adapters/` — Adapter resolver, YAML schema, source dispatcher (`profile.*`, `secret.*`, `file.*`, `generate.*`).
 - `apply.py` — Playwright runner. Shadow blocks for `y/N/edit`; auto runs cooldown + submits if all 5 gates hold.
 - `learn.py` — Inspects unknown forms, hashes platform signature, drafts adapter into `adapters_inbox/`.
+- `webapp/` — Local FastAPI + HTMX triage UI. `app.py` (factory), `routes.py`, `scoring.py`, `i18n.py`, `templates/`, `static/`, `i18n_data/` (en + pt_BR). Launched via `job-hunter web`. Localhost-only by default.
 
 At `scripts/` root (sibling of the package):
 

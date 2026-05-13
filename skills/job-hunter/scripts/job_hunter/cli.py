@@ -855,6 +855,45 @@ def doctor() -> None:
     raise typer.Exit(rc)
 
 
+@app.command(name="web")
+def web(
+    host: str = typer.Option("127.0.0.1", "--host", help="Bind address. Default localhost-only."),
+    port: int = typer.Option(8765, "--port", help="Port to listen on."),
+    open_browser: bool = typer.Option(
+        True, "--open/--no-open", help="Open the default browser on launch."
+    ),
+    reload: bool = typer.Option(False, "--reload", help="Auto-reload on code edits (dev only)."),
+) -> None:
+    """Launch the local triage webapp.
+
+    Binds 127.0.0.1 by default — no auth, no LAN exposure. Override `--host`
+    only if you understand the implication: this DB contains tracked
+    application data and (optionally) PII-adjacent notes.
+    """
+    import threading
+    import webbrowser
+
+    import uvicorn
+
+    url = f"http://{host}:{port}/jobs"
+    console.print(f"[bold green]webapp[/bold green] → {url}")
+    if host not in {"127.0.0.1", "localhost", "::1"}:
+        console.print(
+            "[yellow]warning:[/yellow] binding non-localhost. App has no auth — "
+            "exposed jobs.db and notes will be readable by anyone who can reach this port."
+        )
+    if open_browser and not reload:
+        threading.Timer(0.8, lambda: webbrowser.open(url)).start()
+    uvicorn.run(
+        "job_hunter.webapp.app:create_app",
+        factory=True,
+        host=host,
+        port=port,
+        reload=reload,
+        log_level="info",
+    )
+
+
 @app.command()
 def lint() -> None:
     """Scan runtime dirs for accidentally leaked PII patterns."""

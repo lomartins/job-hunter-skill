@@ -4,9 +4,13 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Plugin Version](https://img.shields.io/badge/dynamic/json?label=version&query=%24.plugins%5B0%5D.version&url=https%3A%2F%2Fraw.githubusercontent.com%2Flomartins%2Fjob-hunter-skill%2Fmain%2F.claude-plugin%2Fmarketplace.json)](.claude-plugin/marketplace.json)
 
-Discover, track, and assist with senior mobile / Android / Kotlin Multiplatform job applications across LinkedIn, Gupy, RemoteOK, Job na Gringa, and seven more sources. Tracks every opportunity through its lifecycle in a local SQLite DB mirrored to readable Markdown. Fills application forms in two modes — `shadow` (default; pauses for your review) and `auto` (gated by adapter reliability and explicit consent) — using a YAML adapter system that learns from unknown forms and improves over time.
+Discover, track, and assist with **any tech / engineering job application** — backend, frontend, mobile, data, ML, infra, devrel, security, design-eng, you name it. Pulls postings from LinkedIn, Indeed, Glassdoor, Gupy, RemoteOK, Job na Gringa, and more, tracks each through its lifecycle in a local SQLite DB mirrored to readable Markdown, and assists with form-filling in two modes — `shadow` (default; pauses for your review before submit) and `auto` (gated by adapter reliability and explicit consent) — using a YAML adapter system that learns from unknown forms and improves over time.
 
-**The skill never sends PII to model servers.** Personal data (CPF, RG, phone, address, salary expectations, session cookies) lives in a `chmod 600` env file the model is forbidden to read. The model only sees field schemas. See [PII isolation](#pii-isolation) below.
+Your "what counts as a relevant role" filter is just `profile.yaml` — switch the role keywords once and the same skill works for a senior platform engineer, a junior data analyst, or a staff designer.
+
+Bundled with a local **webapp** (FastAPI + HTMX) for visual triage: kanban tracker with drag-and-drop stage transitions, filter by tag/source/stage/flag, sort by match/date/salary, manual notes, "report broken posting" flag, daily/weekly application charts, and one-click copy of Claude Code commands per job (`/job-hunter:apply`, `/job-hunter:dig`, `/job-hunter:tailor-resume` via [Reactive Resume](https://github.com/amruthpillai/reactive-resume)).
+
+**The skill never sends PII to model servers.** Personal data (national ID numbers, phone, address, salary expectations, session cookies) lives in a `chmod 600` env file the model is forbidden to read. The model only sees field schemas. See [PII isolation](#pii-isolation) below.
 
 ## Install
 
@@ -51,8 +55,12 @@ This puts `job-hunter` and the shorter alias `job` on your PATH.
 # 1. Initialize XDG dirs and copy templates
 job init
 
-# 2. Edit your profile (no PII — roles, locations, links)
+# 2. Edit your profile — role keywords drive matching (no PII goes here)
 $EDITOR ~/.config/job-hunter/profile.yaml
+#   roles: [backend engineer, golang, distributed systems]
+#   roles: [senior frontend, react, typescript]
+#   roles: [data engineer, dbt, snowflake]
+#   roles: [staff android, kotlin, kmp]      # whatever fits you
 
 # 3. Add your secrets (kept out of model context)
 $EDITOR ~/.config/job-hunter/secrets/personal.env
@@ -62,13 +70,16 @@ chmod 600 ~/.config/job-hunter/secrets/personal.env
 job discover --source remoteok
 
 # 5. See what landed
-cat ~/.local/share/job-hunter/tracking.md
-job list --stage discovered
+cat ~/.local/share/job-hunter/tracking.md     # human-readable mirror
+job list --stage discovered                    # CLI view
+job web                                        # or: visual triage in a browser
 
 # 6. Queue something and apply in shadow mode
 job queue 7
 job apply 7 --mode shadow
 ```
+
+The webapp listens on `http://127.0.0.1:8765` by default (localhost-only, no auth, no PII exposed). Pass `--port` to override.
 
 ## Architecture
 
@@ -129,15 +140,17 @@ Set `FIRECRAWL_ENDPOINT=http://localhost:3002` in `personal.env` to route Indeed
 
 ## Salary distribution from your own pipeline
 
-After running discover across a few sources, get the role's salary distribution from the data you've actually seen:
+After running discover across a few sources, get the role's salary distribution from the data you've actually seen — no live Glassdoor scraping needed:
 
 ```bash
 job-hunter discover --source indeed
 job-hunter discover --source remoteok
-job-hunter salary --role "android" --location brazil
+job-hunter salary --role "backend engineer" --location "united states"
+job-hunter salary --role "kotlin"           --location brazil
+job-hunter salary --role "data engineer"    --location remote
 ```
 
-Outputs p25 / median / p75 per currency + a suggested expectation (p75 + 10% padding). Uses postings already in the DB — no live Glassdoor scraping needed.
+Outputs p25 / median / p75 per currency + a suggested expectation (p75 + 10% padding). The `--role` matches against title substrings, so use whichever keyword density matches your search.
 
 ## Adapter platform support
 
@@ -156,9 +169,26 @@ Outputs p25 / median / p75 per currency + a suggested expectation (p75 + 10% pad
 
 Auto-eligibility flips on per-signature after three consecutive successful shadow submits and an explicit `job adapter mark-auto-eligible <sig>`.
 
+## Slash commands (Claude Code plugin install)
+
+| Command | What it does |
+|---------|-------------|
+| `/job-hunter:discover [source]` | Pull new postings (default: `remoteok`). |
+| `/job-hunter:list [filters]` | Pipeline table. |
+| `/job-hunter:track <url>` | Track a specific posting + queue it. |
+| `/job-hunter:apply <id>` | Preview the form-fill plan (dry-run). |
+| `/job-hunter:dig <id>` | Re-fetch JD + brief: fit, friction, tailoring angles, next move. |
+| `/job-hunter:tailor-resume <id>` | Generate a [Reactive Resume](https://github.com/amruthpillai/reactive-resume) JSON tailored to the JD. |
+| `/job-hunter:validate [id]` | Pre-flag obvious non-fits (junior, country-locked, on-site wrong country). |
+| `/job-hunter:web` | Launch the local triage webapp. |
+| `/job-hunter:status` | Pipeline summary + suggested next steps. |
+| `/job-hunter:review` | Paused adapters + inbox drafts. |
+| `/job-hunter:sync` | Regenerate `tracking.md`. |
+| `/job-hunter:doctor` | Validate install / perms / deps. |
+
 ## PII isolation
 
-The model is forbidden to read `~/.config/job-hunter/secrets/personal.env`. It works against `assets/personal.env.example` (empty-value template) for schema, and the CLI loads real values via `python-dotenv` at runtime in a child process.
+The model is forbidden to read `~/.config/job-hunter/secrets/personal.env`. It works against `assets/personal.env.example` (empty-value template) for schema, and the CLI loads real values via `python-dotenv` at runtime in a child process. The webapp reads the SQLite DB only — it never opens the secrets file.
 
 CI runs `lint_secret_leaks.py` on every PR; pre-submit checks block any form fill that would echo PII into logs or screenshots. See [`skills/job-hunter/SKILL.md`](skills/job-hunter/SKILL.md#forbidden-actions-pii-isolation) for the full forbidden-action list.
 

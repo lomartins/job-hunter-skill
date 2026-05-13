@@ -112,6 +112,7 @@ def upsert_posting(sess: Session, posting: JobPosting) -> tuple[int, bool]:
             raw_payload=_dump_payload(posting.raw_payload),
             scraped_at=now,
             fingerprint=posting.fingerprint(),
+            tags=_dump_tags(posting.tags),
         )
         sess.add(job)
         sess.commit()
@@ -138,6 +139,10 @@ def upsert_posting(sess: Session, posting: JobPosting) -> tuple[int, bool]:
         existing.raw_payload = _dump_payload(posting.raw_payload)
     existing.scraped_at = now
     existing.fingerprint = posting.fingerprint()
+    if posting.tags:
+        # Merge: union existing + new tags so we never lose info on re-scrape.
+        merged = _merge_tags(existing.tags, posting.tags)
+        existing.tags = _dump_tags(merged)
     sess.add(existing)
     sess.commit()
     assert existing.id is not None
@@ -159,3 +164,30 @@ def _dump_payload(payload: dict[str, Any]) -> str | None:
         return json.dumps(payload, sort_keys=True, default=str)
     except (TypeError, ValueError):
         return None
+
+
+def _dump_tags(tags: list[str]) -> str | None:
+    if not tags:
+        return None
+    # Normalize, dedupe (preserve order), drop empty.
+    seen: dict[str, None] = {}
+    for t in tags:
+        norm = (t or "").strip().lower()
+        if norm and norm not in seen:
+            seen[norm] = None
+    if not seen:
+        return None
+    return json.dumps(list(seen), sort_keys=False)
+
+
+def _merge_tags(existing_json: str | None, new_tags: list[str]) -> list[str]:
+    """Union of existing JSON-encoded tags + new list. Preserves prior order."""
+    prior: list[str] = []
+    if existing_json:
+        try:
+            loaded = json.loads(existing_json)
+            if isinstance(loaded, list):
+                prior = [str(t) for t in loaded if isinstance(t, str)]
+        except (TypeError, ValueError):
+            prior = []
+    return prior + [t for t in new_tags if t not in prior]

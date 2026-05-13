@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="mb-5">
+  <h1 class="text-2xl font-semibold tracking-tight">{{ t("nav.jobs") }}</h1>
+  <p class="text-sm text-slate-400 mt-1">{{ t("app.tagline") }}</p>
+</section>
+
+<form id="filters"
+      hx-get="/jobs"
+      hx-target="#joblist"
+      hx-swap="outerHTML"
+      hx-trigger="change from:select delay:120ms, keyup from:input[name=q] changed delay:300ms"
+      hx-push-url="true"
+      class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-5 bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+  {% for t_ in active_tags %}<input type="hidden" name="tag" value="{{ t_ }}" />{% endfor %}
+  <label class="col-span-2 md:col-span-2 flex flex-col gap-1">
+    <span class="text-xs uppercase tracking-wider text-slate-400">{{ t("filter.search") }}</span>
+    <input name="q" value="{{ current.q }}" type="search" autocomplete="off"
+           class="rounded-md bg-slate-950 border-slate-700 text-sm" />
+  </label>
+  <label class="flex flex-col gap-1">
+    <span class="text-xs uppercase tracking-wider text-slate-400">{{ t("filter.stage") }}</span>
+    <select name="stage" class="rounded-md bg-slate-950 border-slate-700 text-sm">
+      <option value="">{{ t("filter.all") }}</option>
+      {% for s in stages %}
+        <option value="{{ s }}" {% if current.stage == s %}selected{% endif %}>{{ t("stage." ~ s) }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="flex flex-col gap-1">
+    <span class="text-xs uppercase tracking-wider text-slate-400">{{ t("filter.source") }}</span>
+    <select name="source" class="rounded-md bg-slate-950 border-slate-700 text-sm">
+      <option value="">{{ t("filter.all") }}</option>
+      {% for s in sources %}
+        <option value="{{ s }}" {% if current.source == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="flex flex-col gap-1">
+    <span class="text-xs uppercase tracking-wider text-slate-400">{{ t("filter.flag") }}</span>
+    <select name="flag" class="rounded-md bg-slate-950 border-slate-700 text-sm">
+      <option value="">{{ t("filter.all") }}</option>
+      <option value="none" {% if current.flag == "none" %}selected{% endif %}>{{ t("flag.none") }}</option>
+      <option value="any" {% if current.flag == "any" %}selected{% endif %}>★ any</option>
+      {% for f in flag_values %}
+        <option value="{{ f }}" {% if current.flag == f %}selected{% endif %}>{{ t("flag." ~ f) }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label class="flex flex-col gap-1">
+    <span class="text-xs uppercase tracking-wider text-slate-400">{{ t("sort.label") }}</span>
+    <select name="sort" class="rounded-md bg-slate-950 border-slate-700 text-sm">
+      {% for s in sort_values %}
+        <option value="{{ s }}" {% if current.sort == s %}selected{% endif %}>{{ t("sort." ~ s) }}</option>
+      {% endfor %}
+    </select>
+  </label>
+</form>
+
+{% if top_tags %}
+  <section class="mb-4 flex items-center gap-2 flex-wrap">
+    <span class="text-xs uppercase tracking-wider text-slate-500">{{ t("filter.tag_top") }}</span>
+    {% for tag in top_tags %}
+      {% set is_active = tag in active_tags %}
+      <a href="?{{ tag_toggle_query(current, tag) }}"
+         class="text-xs px-2.5 py-1 rounded-full border transition
+                {% if is_active %}border-emerald-400/60 bg-emerald-500/15 text-emerald-200{% else %}border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200{% endif %}">
+        {% if is_active %}<span class="mr-0.5">✕</span>{% endif %}{{ tag }}
+      </a>
+    {% endfor %}
+    {% if active_tags %}
+      <a href="?{{ tag_clear_query(current) }}" class="text-xs px-2 py-1 text-rose-300 hover:text-rose-200 underline-offset-2 hover:underline">{{ t("filter.tag_clear") }}</a>
+    {% endif %}
+  </section>
+{% endif %}
+
+{% include "_job_table.html" %}
+{% endblock %}

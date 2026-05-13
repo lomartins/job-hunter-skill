@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="{{ 'pt-BR' if locale == 'pt_BR' else 'en' }}" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ t("app.title") }}{% block title_suffix %}{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'] }
+        }
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body class="min-h-full antialiased">
+  <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur sticky top-0 z-10">
+    <div class="mx-auto max-w-7xl px-5 py-3 flex items-center gap-6">
+      <a href="/jobs" class="font-mono text-sm tracking-tight text-emerald-400">
+        <span class="opacity-50">$</span> {{ t("app.title") }}
+      </a>
+      <nav class="flex items-center gap-1 text-sm">
+        {% set tabs = [("/jobs", t("nav.jobs")), ("/tracker", t("nav.tracker")), ("/metrics", t("nav.metrics"))] %}
+        {% for href, label in tabs %}
+          <a href="{{ href }}"
+             class="px-3 py-1.5 rounded-md hover:bg-slate-800 transition
+                    {% if request.url.path == href %}bg-slate-800 text-white{% else %}text-slate-300{% endif %}">
+            {{ label }}
+          </a>
+        {% endfor %}
+      </nav>
+      <div class="ml-auto">
+        <form method="post" action="/lang" class="inline-flex">
+          <input type="hidden" name="lang" value="{{ 'en' if locale == 'pt_BR' else 'pt_BR' }}" />
+          <input type="hidden" name="next" value="{{ request.url.path }}" />
+          <button class="px-2.5 py-1 rounded-md text-xs font-mono border border-slate-700 hover:bg-slate-800">
+            {{ t("nav.lang_short") }}
+          </button>
+        </form>
+      </div>
+    </div>
+  </header>
+  <main class="{% block main_class %}mx-auto max-w-7xl px-5 py-6{% endblock %}">
+    {% block content %}{% endblock %}
+  </main>
+  <script>
+    // Generic copy-to-clipboard for any [data-copy] button.
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest(".jh-copy");
+      if (!btn) return;
+      const text = btn.dataset.copy || "";
+      const done = btn.dataset.labelDone || "Copied";
+      const orig = btn.dataset.label || btn.textContent;
+      const finish = () => {
+        btn.textContent = done;
+        btn.classList.add("border-emerald-400/60", "text-emerald-200");
+        setTimeout(() => {
+          btn.textContent = orig;
+          btn.classList.remove("border-emerald-400/60", "text-emerald-200");
+        }, 1200);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(finish, finish);
+      } else {
+        // Fallback: temporary textarea selection.
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand("copy"); } catch (_) {}
+        document.body.removeChild(ta);
+        finish();
+      }
+    });
+  </script>
+</body>
+</html>
