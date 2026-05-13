@@ -1,16 +1,31 @@
 # job-hunter
 
+> A self-hosted, PII-safe job-search command center — for Claude Code, Codex, Cursor, and the terminal.
+
 [![CI](https://github.com/lomartins/job-hunter-skill/actions/workflows/ci.yml/badge.svg)](https://github.com/lomartins/job-hunter-skill/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Plugin Version](https://img.shields.io/badge/dynamic/json?label=version&query=%24.plugins%5B0%5D.version&url=https%3A%2F%2Fraw.githubusercontent.com%2Flomartins%2Fjob-hunter-skill%2Fmain%2F.claude-plugin%2Fmarketplace.json)](.claude-plugin/marketplace.json)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-3776ab.svg)](https://www.python.org/)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-skill-d97757.svg)](https://github.com/anthropics/claude-code)
 
-Discover, track, and assist with **any tech / engineering job application** — backend, frontend, mobile, data, ML, infra, devrel, security, design-eng, you name it. Pulls postings from LinkedIn, Indeed, Glassdoor, Gupy, RemoteOK, Job na Gringa, and more, tracks each through its lifecycle in a local SQLite DB mirrored to readable Markdown, and assists with form-filling in two modes — `shadow` (default; pauses for your review before submit) and `auto` (gated by adapter reliability and explicit consent) — using a YAML adapter system that learns from unknown forms and improves over time.
+Job hunting buried under a hundred tabs? **job-hunter** scrapes job boards, tracks every application kanban-style in a local SQLite DB, fills ATS forms in `shadow` or `auto` mode, surfaces salary distributions from your own pipeline, and tailors a [Reactive Resume](https://github.com/amruthpillai/reactive-resume) per JD — all without ever sending your phone, ID, or session cookies to a model.
 
-Your "what counts as a relevant role" filter is just `profile.yaml` — switch the role keywords once and the same skill works for a senior platform engineer, a junior data analyst, or a staff designer.
+Works for **any tech role** — backend, frontend, mobile, data, ML, infra, devrel, security, design-eng. Drop your role keywords in `profile.yaml` once and the same skill works for a senior platform engineer, a junior data analyst, or a staff designer.
 
-Bundled with a local **webapp** (FastAPI + HTMX) for visual triage: kanban tracker with drag-and-drop stage transitions, filter by tag/source/stage/flag, sort by match/date/salary, manual notes, "report broken posting" flag, daily/weekly application charts, and one-click copy of Claude Code commands per job (`/job-hunter:apply`, `/job-hunter:dig`, `/job-hunter:tailor-resume` via [Reactive Resume](https://github.com/amruthpillai/reactive-resume)).
+## What you get
 
-**The skill never sends PII to model servers.** Personal data (national ID numbers, phone, address, salary expectations, session cookies) lives in a `chmod 600` env file the model is forbidden to read. The model only sees field schemas. See [PII isolation](#pii-isolation) below.
+- **11 sources out of the box** — LinkedIn, Indeed, Glassdoor, Gupy, RemoteOK, Job na Gringa, Remotive, We Work Remotely, Himalayas, Programathor, Coodesh. New scrapers via a `learn.py` adapter that drafts YAML from any unknown form.
+- **Full pipeline tracking** — `discovered → queued → applying → applied → screening → technical → behavioral → offer / rejected / withdrawn`, with note-bearing transitions, flagging, and structured tags.
+- **Local FastAPI + HTMX webapp** at `127.0.0.1:8765` — kanban tracker with drag-and-drop stage moves, filter by tag/source/stage/flag, sort by match/date/salary, currency conversion (BRL/USD/EUR via free ECB rates), markdown-rendered JDs, daily/weekly application charts.
+- **Match score** per job derived from your profile + JD heuristics (seniority, country lock, on-site mismatch, US-clearance, etc.).
+- **Salary aggregator** — p25/median/p75 from your own scraped data, no live Glassdoor scraping needed.
+- **AI form-fill in two modes** — `shadow` pauses before submit, `auto` requires 5 reliability gates *and* explicit consent.
+- **Resume tailoring** — `/job-hunter:tailor-resume <id>` emits Reactive Resume JSON tuned to the JD.
+- **Claude Code slash commands** — `discover`, `apply`, `dig`, `tailor-resume`, `validate`, `web`, `tracker`, `status`, `review`, `doctor`.
+
+## PII-safe by design
+
+Your personal data (national ID, phone, address, salary expectations, session cookies) lives in `~/.config/job-hunter/secrets/personal.env` — `chmod 600`, and the **model is explicitly forbidden** to read it via Read tool, cat/head/tail/grep, or any pipe whose output enters the conversation. The CLI loads it via `python-dotenv` in a child process; the model only ever sees field schemas. CI enforces this: `lint_secret_leaks.py` blocks any PR that would echo PII into logs, screenshots, or artifacts.
 
 ## Install
 
