@@ -11,8 +11,12 @@ import asyncio
 import re
 import sys
 from datetime import UTC, datetime
+from pathlib import Path
 
-sys.path.insert(0, "/home/lomartins/projects/job-hunter-skill/skills/job-hunter/scripts")
+# Resolve the in-repo scripts dir relative to this file so the harvest works
+# from any clone (not tied to the maintainer's home directory).
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_REPO_ROOT / "skills" / "job-hunter" / "scripts"))
 
 from job_hunter.db import run_migrations
 from job_hunter.discover import upsert_posting
