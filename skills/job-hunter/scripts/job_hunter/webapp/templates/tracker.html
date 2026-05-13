@@ -6,8 +6,33 @@
     <h1 class="text-2xl font-semibold tracking-tight">{{ t("tracker.title") }}</h1>
     <p class="text-xs text-slate-500 mt-1">Drag cards between columns — stage updates save automatically.</p>
   </div>
-  <span id="tracker-status" class="text-xs font-mono text-slate-500"></span>
+  <div class="flex items-center gap-3">
+    <form method="get" action="/tracker" class="inline-flex">
+      {% for t_ in active_tags %}<input type="hidden" name="tag" value="{{ t_ }}" />{% endfor %}
+      <input type="search" name="q" value="{{ current.q }}" placeholder="{{ t('filter.search') }}"
+             class="rounded-md bg-slate-950 border-slate-700 text-xs px-2 py-1 w-56" />
+    </form>
+    <span class="text-xs font-mono text-slate-500">{{ shown }} / {{ total }}</span>
+    <span id="tracker-status" class="text-xs font-mono text-slate-500"></span>
+  </div>
 </section>
+
+{% if top_tags %}
+  <section class="mb-4 flex items-center gap-2 flex-wrap">
+    <span class="text-xs uppercase tracking-wider text-slate-500">{{ t("filter.tag_top") }}</span>
+    {% for tag in top_tags %}
+      {% set is_active = tag in active_tags %}
+      <a href="?{{ tag_toggle_query(current, tag) }}"
+         class="text-xs px-2.5 py-1 rounded-full border transition
+                {% if is_active %}border-emerald-400/60 bg-emerald-500/15 text-emerald-200{% else %}border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-slate-200{% endif %}">
+        {% if is_active %}<span class="mr-0.5">✕</span>{% endif %}{{ tag }}
+      </a>
+    {% endfor %}
+    {% if active_tags %}
+      <a href="?{{ tag_clear_query(current) }}" class="text-xs px-2 py-1 text-rose-300 hover:text-rose-200 underline-offset-2 hover:underline">{{ t("filter.tag_clear") }}</a>
+    {% endif %}
+  </section>
+{% endif %}
 
 <div class="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory lg:snap-none" id="tracker-board">
   {% for stage, items in columns %}

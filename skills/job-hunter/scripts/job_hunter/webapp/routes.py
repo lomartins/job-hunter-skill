@@ -475,11 +475,27 @@ def register(app: FastAPI) -> None:
         return RedirectResponse(url=url, status_code=303)
 
     @app.get("/tracker", response_class=HTMLResponse)
-    def tracker(request: Request) -> Response:
+    def tracker(
+        request: Request,
+        tag: list[str] | None = Query(default=None),  # noqa: B008
+        q: str | None = Query(default=None),
+    ) -> Response:
         with request.app.state.session_factory() as s:
             rows = _load_rows(s)
-            by_stage: dict[str, list[JobRow]] = defaultdict(list)
+            # Build the chip palette from the full corpus so it stays stable
+            # while the user toggles filters.
+            tag_counter: Counter[str] = Counter()
             for r in rows:
+                for t_ in r.tags:
+                    tag_counter[t_.lower()] += 1
+            top_tags = [t_ for t_, _ in tag_counter.most_common(30)]
+            active_tags = [t_.lower() for t_ in (tag or []) if t_]
+            filtered = _apply_filters(
+                rows, stage=None, source=None, flag=None, q=q, tags=active_tags
+            )
+
+            by_stage: dict[str, list[JobRow]] = defaultdict(list)
+            for r in filtered:
                 by_stage[r.application.current_stage].append(r)
 
             def _sort_key(r: JobRow) -> float:
@@ -508,7 +524,14 @@ def register(app: FastAPI) -> None:
                     Stage.WITHDRAWN.value,
                 )
             ]
-            ctx = {"columns": ordered}
+            ctx = {
+                "columns": ordered,
+                "top_tags": top_tags,
+                "active_tags": active_tags,
+                "current": {"tag": active_tags, "q": q or ""},
+                "total": len(rows),
+                "shown": len(filtered),
+            }
             return _render(request, "tracker.html", ctx)
 
     @app.get("/metrics", response_class=HTMLResponse)

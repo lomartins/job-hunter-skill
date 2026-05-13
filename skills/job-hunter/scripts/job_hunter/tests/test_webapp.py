@@ -519,6 +519,40 @@ def test_converted_column_renders_with_mocked_rates(
     assert "514,01" in r.text or "514,02" in r.text
 
 
+def test_tracker_filters_by_tag(client: TestClient, job_hunter_home: Path) -> None:
+    _insert_job(
+        job_hunter_home,
+        title="KMP Role",
+        company="Alpha",
+        tags=["kotlin", "android"],
+        stage=Stage.QUEUED,
+    )
+    _insert_job(
+        job_hunter_home,
+        title="Django Role",
+        company="Beta",
+        tags=["python", "django"],
+        stage=Stage.QUEUED,
+    )
+    r = client.get("/tracker", params={"tag": "kotlin"})
+    assert r.status_code == 200
+    body = r.text
+    # The kanban shows only the kotlin-tagged card.
+    assert "KMP Role" in body
+    assert "Django Role" not in body
+    # Chip palette includes both top tags (built from full corpus).
+    assert "python" in body and "kotlin" in body
+
+
+def test_tracker_search_q_filter(client: TestClient, job_hunter_home: Path) -> None:
+    _insert_job(job_hunter_home, title="Senior Android Lead", company="Alpha")
+    _insert_job(job_hunter_home, title="Backend Go", company="Beta")
+    r = client.get("/tracker", params={"q": "android"})
+    body = r.text
+    assert "Senior Android Lead" in body
+    assert "Backend Go" not in body
+
+
 def test_converted_column_dash_when_same_currency(
     client: TestClient, job_hunter_home: Path
 ) -> None:

@@ -6,6 +6,21 @@ The plugin's version is the source of truth and is mirrored in `.claude-plugin/m
 
 ## [Unreleased]
 
+## [0.12.3] - 2026-05-13
+
+### Added
+- **Tag filter on the pipeline tracker.** `/tracker?tag=foo&tag=bar`
+  filters the kanban with AND semantics, same shape as `/jobs`. The
+  top-tags chip row renders above the board (built from the full corpus
+  so the palette stays stable as you toggle), with an emerald-highlighted
+  active state and a "Clear" link to drop all tags.
+- **Title/company search on the tracker** via `?q=…` and a small input
+  in the tracker header. Shown/total counter reflects the active filter.
+
+### Tests
+- 2 new tracker tests: tag-filter narrows the board to matching cards
+  while leaving the chip palette intact; `q` substring filter.
+
 ## [0.12.2] - 2026-05-13
 
 ### Added
