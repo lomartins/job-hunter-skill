@@ -397,3 +397,58 @@ def test_top_tags_shown_on_listing(client: TestClient, job_hunter_home: Path) ->
     r = client.get("/jobs")
     # The top-tags row should mention "kotlin" outside the table.
     assert r.text.count("kotlin") >= 2
+
+
+# ─── markdown description renderer ─────────────────────────────────────────
+
+
+def test_description_html_input_renders_to_clean_html(
+    client: TestClient, job_hunter_home: Path
+) -> None:
+    """HTML descriptions are normalized to markdown, then rendered as bounded HTML."""
+    raw = (
+        "<p><strong>About:</strong> remote senior role.</p>"
+        "<ul><li>Kotlin</li><li>Compose</li></ul>"
+        "<script>alert('x')</script>"
+        '<a href="https://example.com">apply here</a>'
+    )
+    jid = _insert_job(job_hunter_home, title="X", company="Y", description=raw)
+    r = client.get(f"/jobs/{jid}")
+    body = r.text
+    # Isolate the description block so tailwind/htmx CDN scripts don't pollute.
+    start = body.find('class="jh-prose')
+    assert start != -1, "description container not rendered"
+    end = body.find("</div>", start)
+    block = body[start:end]
+    assert "<ul>" in block
+    assert "Kotlin" in block
+    assert "<strong>" in block
+    assert "https://example.com" in block
+    # Source-supplied <script> tags must be sanitized out of the description.
+    assert "<script>" not in block
+    assert "alert('x')" not in block
+
+
+def test_description_markdown_input_renders(
+    client: TestClient, job_hunter_home: Path
+) -> None:
+    """Already-markdown input renders straight through markdown-it."""
+    raw = "## Stack\n\n- Kotlin\n- KMP\n\n**Senior** role."
+    jid = _insert_job(job_hunter_home, title="X", company="Y", description=raw)
+    r = client.get(f"/jobs/{jid}")
+    body = r.text
+    start = body.find('class="jh-prose')
+    end = body.find("</div>", start)
+    block = body[start:end]
+    assert "<h2>" in block and "Stack" in block
+    assert "<ul>" in block
+    assert "<strong>Senior</strong>" in block
+
+
+def test_description_empty_renders_nothing(
+    client: TestClient, job_hunter_home: Path
+) -> None:
+    jid = _insert_job(job_hunter_home, title="X", company="Y", description=None)
+    r = client.get(f"/jobs/{jid}")
+    # No description block at all — the heading isn't rendered.
+    assert ">Description<" not in r.text and "Descrição" not in r.text

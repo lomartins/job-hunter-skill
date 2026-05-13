@@ -103,8 +103,8 @@
 
     {% if job.description %}
       <article class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
-        <h2 class="text-sm uppercase tracking-wider text-slate-400 mb-2">{{ t("job.description") }}</h2>
-        <pre class="whitespace-pre-wrap text-sm text-slate-300 leading-relaxed font-sans">{{ job.description | clean_desc }}</pre>
+        <h2 class="text-sm uppercase tracking-wider text-slate-400 mb-3">{{ t("job.description") }}</h2>
+        <div class="jh-prose text-sm text-slate-300 leading-relaxed">{{ job.description | render_desc | safe }}</div>
       </article>
     {% endif %}
 

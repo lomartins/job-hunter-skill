@@ -22,33 +22,86 @@ from urllib.parse import urlencode
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from markdown_it import MarkdownIt
+from markdownify import markdownify as html_to_markdown
 from sqlmodel import Session
 
 from ..db import get_engine, run_migrations
 from ..paths import Paths, resolve
 from . import i18n
 
-_BLOCK_TAG_RE = re.compile(r"</?(?:p|br|li|div|h[1-6]|tr|ul|ol)\b[^>]*>", re.IGNORECASE)
-_TAG_RE = re.compile(r"<[^>]+>")
+_HTML_TAG_RE = re.compile(r"<[a-z!/][^>]*>", re.IGNORECASE)
 _WS_RE = re.compile(r"[ \t]+")
 _NEWLINES_RE = re.compile(r"\n{3,}")
 
+# A single MarkdownIt instance is reused across renders. `zero` preset disables
+# everything; we then opt in to the rules that produce structured output but
+# refuse raw HTML / JS schemes. The result is always well-formed, safe HTML.
+_MD = (
+    MarkdownIt("zero")
+    .enable(
+        [
+            "heading",
+            "lheading",
+            "paragraph",
+            "list",
+            "blockquote",
+            "code",
+            "fence",
+            "hr",
+            "emphasis",
+            "link",
+            "backticks",
+            "escape",
+            "newline",
+            "table",
+            "strikethrough",
+        ]
+    )
+    .disable(["html_inline", "html_block"])
+)
 
-def _clean_description(raw: str | None) -> str:
-    """Strip HTML from a job description while preserving block-level breaks.
 
-    Many sources (RemoteOK, ATSes) hand back HTML-bearing strings. We don't
-    want to render it — it's untrusted and visually inconsistent — so we
-    convert block tags to newlines, strip the rest, and unescape entities.
+def _looks_like_html(raw: str) -> bool:
+    return bool(_HTML_TAG_RE.search(raw))
+
+
+def _normalize_to_markdown(raw: str) -> str:
+    """Turn an HTML-bearing job description into markdown. Idempotent on plain text."""
+    md = (
+        html_to_markdown(raw, heading_style="ATX", bullets="-")
+        if _looks_like_html(raw)
+        else raw
+    )
+    md = html.unescape(md)
+    md = _WS_RE.sub(" ", md)
+    md = _NEWLINES_RE.sub("\n\n", md)
+    return md.strip()
+
+
+def _render_description_html(raw: str | None) -> str:
+    """Render a job description as sanitized HTML.
+
+    Inputs are mostly HTML from sources (RemoteOK, ATSes). We convert to
+    markdown first to normalize structure (drops inline styles, classes,
+    scripts), then render via markdown-it with raw HTML disabled — so the
+    output is bounded to a small whitelist of structural tags.
     """
     if not raw:
         return ""
-    text = _BLOCK_TAG_RE.sub("\n", raw)
-    text = _TAG_RE.sub("", text)
-    text = html.unescape(text)
-    text = _WS_RE.sub(" ", text)
-    text = _NEWLINES_RE.sub("\n\n", text)
-    return text.strip()
+    md = _normalize_to_markdown(raw)
+    if not md:
+        return ""
+    rendered: str = _MD.render(md)
+    return rendered
+
+
+def _clean_description(raw: str | None) -> str:
+    """Legacy plain-text filter, kept for places that still want text only."""
+    if not raw:
+        return ""
+    md = _normalize_to_markdown(raw)
+    return _HTML_TAG_RE.sub("", md).strip()
 
 
 def _templates_dir() -> Path:
@@ -103,6 +156,7 @@ def create_app(paths: Paths | None = None) -> FastAPI:
     templates.env.globals["tag_toggle_query"] = _tag_toggle_query
     templates.env.globals["tag_clear_query"] = _tag_clear_query
     templates.env.filters["clean_desc"] = _clean_description
+    templates.env.filters["render_desc"] = _render_description_html
 
     static_dir = _static_dir()
     if static_dir.exists():

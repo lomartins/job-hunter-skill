@@ -6,6 +6,29 @@ The plugin's version is the source of truth and is mirrored in `.claude-plugin/m
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-05-13
+
+### Added
+- **Markdown rendering for job descriptions on the detail page.** Sources
+  hand back HTML-bearing strings (RemoteOK is the worst offender). The new
+  pipeline: `markdownify` normalizes HTML → markdown (drops inline styles,
+  classes, scripts), then `markdown-it-py` renders markdown → bounded HTML
+  with raw HTML / JS schemes disabled. Output is styled via a `.jh-prose`
+  class with dark-themed headings, lists, links, blockquotes, code, and
+  tables. Existing plain-markdown descriptions render straight through.
+- Three webapp tests covering: HTML input is sanitized (no `<script>`
+  passthrough) and rendered as structured HTML; markdown input renders
+  correctly; empty descriptions render nothing.
+
+### Removed
+- "Open & mark applied" button on the job detail page (per request) —
+  detail page now has just `Open ↗` and `✓ Mark applied`. The joblist row
+  action is unchanged.
+
+### Dependencies
+- `markdownify>=0.13.1,<1`
+- `markdown-it-py>=3.0.0,<4`
+
 ## [0.12.0] - 2026-05-13
 
 Storage and UI for job tags, plus a Claude Code command launcher and split

@@ -99,3 +99,82 @@ input:focus, select:focus, textarea:focus {
 .jh-dropzone.sortable-receiving {
   background: rgba(16, 185, 129, 0.04);
 }
+
+/* ── Rendered job description (markdown → HTML) ───────────────────────── */
+.jh-prose { color: rgb(203 213 225); }            /* slate-300 base */
+.jh-prose > * + * { margin-top: 0.85rem; }
+.jh-prose p { line-height: 1.65; }
+.jh-prose strong, .jh-prose b { color: rgb(226 232 240); font-weight: 600; }
+.jh-prose em, .jh-prose i { color: rgb(226 232 240); }
+.jh-prose h1, .jh-prose h2, .jh-prose h3, .jh-prose h4, .jh-prose h5, .jh-prose h6 {
+  color: rgb(241 245 249);                        /* slate-100 */
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 1.4rem;
+  margin-bottom: 0.55rem;
+  line-height: 1.3;
+}
+.jh-prose h1 { font-size: 1.15rem; }
+.jh-prose h2 { font-size: 1.05rem; }
+.jh-prose h3 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgb(148 163 184); }
+.jh-prose h4, .jh-prose h5, .jh-prose h6 { font-size: 0.9rem; color: rgb(148 163 184); }
+.jh-prose ul, .jh-prose ol { padding-left: 1.4rem; }
+.jh-prose ul { list-style: disc; }
+.jh-prose ol { list-style: decimal; }
+.jh-prose li { margin-top: 0.25rem; }
+.jh-prose li > p { margin: 0; display: inline; }
+.jh-prose li::marker { color: rgb(100 116 139); }
+.jh-prose a {
+  color: rgb(110 231 183);                        /* emerald-300 */
+  text-decoration: underline;
+  text-decoration-color: rgba(16, 185, 129, 0.35);
+  text-underline-offset: 2px;
+}
+.jh-prose a:hover {
+  color: rgb(167 243 208);
+  text-decoration-color: rgba(16, 185, 129, 0.7);
+}
+.jh-prose code {
+  background: rgb(15 23 42);                      /* slate-900 */
+  border: 1px solid rgb(30 41 59);                /* slate-800 */
+  border-radius: 4px;
+  padding: 0.05rem 0.35rem;
+  font-size: 0.85em;
+  color: rgb(226 232 240);
+}
+.jh-prose pre {
+  background: rgb(2 6 23);                        /* slate-950 */
+  border: 1px solid rgb(30 41 59);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  overflow-x: auto;
+  font-size: 0.85em;
+}
+.jh-prose pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+.jh-prose blockquote {
+  border-left: 3px solid rgba(16, 185, 129, 0.5);
+  padding: 0.25rem 0 0.25rem 0.85rem;
+  color: rgb(148 163 184);
+  font-style: italic;
+}
+.jh-prose hr {
+  border: 0;
+  border-top: 1px solid rgb(30 41 59);
+  margin: 1.5rem 0;
+}
+.jh-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85em;
+}
+.jh-prose th, .jh-prose td {
+  border: 1px solid rgb(30 41 59);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+.jh-prose th { background: rgb(15 23 42); color: rgb(226 232 240); font-weight: 600; }
+.jh-prose img { max-width: 100%; border-radius: 6px; }
