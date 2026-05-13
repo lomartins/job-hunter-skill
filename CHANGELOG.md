@@ -6,6 +6,45 @@ The plugin's version is the source of truth and is mirrored in `.claude-plugin/m
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-05-13
+
+### Added
+- **Currency selector + auto-conversion** in the webapp top bar. Three
+  options: BRL (default), USD, EUR. Choice persists in a year-long
+  `currency` cookie. Selecting auto-submits the form.
+- **New "≈ <default>" column on the joblist** showing the converted
+  salary range. Renders `—` when the source currency matches the default
+  (no point repeating) or when conversion isn't possible (unknown
+  currency, no rates cached).
+- **Currency-symbol prefix on the source salary** column: `R$`, `$`, `€`
+  for the supported set, fallback to a `XYZ ` prefix for anything else.
+- **Detail page** shows the formatted salary plus the converted value
+  below the company/location line.
+- **`webapp/fx.py`** — small module backed by the free, no-auth
+  Frankfurter API (`https://api.frankfurter.dev/v1/latest`, ECB
+  reference rates). Cache lives at `$XDG_STATE_HOME/job-hunter/fx_cache.json`
+  with a 12h TTL. httpx follows redirects so future endpoint moves
+  degrade gracefully. On network failure the cache is served stale
+  rather than returning nothing.
+- **Favicon.** SVG terminal-prompt mark (slate-950 tile, emerald-300
+  `$` glyph + magnifier dot) matching the header chip. Linked via
+  `<link rel="icon" type="image/svg+xml">` so it scales crisply on
+  retina + dark/light tab strips. Theme-color meta included.
+
+### Tests
+- 9 new fx tests (cache fresh/stale/missing, network failure fallback,
+  conversion math via base currency, unknown-currency guard, symbol
+  table).
+- 7 new webapp tests (currency cookie set/invalid, column header
+  reflects cookie, salary prefix, converted column with mocked rates,
+  same-currency dash).
+
+### Notes
+- One Frankfurter call per ~12h per running process. No API key. ECB
+  publishes once on weekdays, so weekend rates are last-Friday's values.
+- BRL is the default because the maintainer's profile is in Brazil. Set
+  via the dropdown to change globally.
+
 ## [0.12.1] - 2026-05-13
 
 ### Added

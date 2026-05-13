@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- job-hunter favicon: terminal-prompt aesthetic to match the header.
+       Rounded slate-950 tile; emerald-300 `$` prompt + magnifier dot.
+       Single self-contained SVG so it works as <link rel="icon" type="image/svg+xml">. -->
+  <rect width="64" height="64" rx="12" fill="#020617"/>
+  <!-- emerald accent stripe at the top, matches the `nav` chip glow -->
+  <rect x="0" y="0" width="64" height="4" fill="#10b981" opacity="0.5"/>
+  <!-- $ prompt -->
+  <text x="14" y="46"
+        font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"
+        font-size="38" font-weight="700" fill="#6ee7b7" letter-spacing="-1">$</text>
+  <!-- magnifier-style dot to hint "search/jobs" -->
+  <circle cx="48" cy="44" r="6" fill="none" stroke="#6ee7b7" stroke-width="3"/>
+  <line x1="52" y1="48" x2="56" y2="52" stroke="#6ee7b7" stroke-width="3" stroke-linecap="round"/>
+</svg>

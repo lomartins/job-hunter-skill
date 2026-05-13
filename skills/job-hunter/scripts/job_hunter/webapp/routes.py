@@ -35,7 +35,7 @@ from ..models import (
     Stage,
     StageHistory,
 )
-from . import i18n
+from . import fx, i18n
 from .scoring import score_job
 
 FLAG_VALUES = ("broken", "suspicious", "spam", "not_fit")
@@ -68,13 +68,22 @@ def _get_locale(request: Request) -> str:
     return i18n.normalize(request.cookies.get("lang"))
 
 
+def _get_currency(request: Request) -> str:
+    raw = (request.cookies.get("currency") or fx.DEFAULT).upper()
+    return raw if raw in fx.SUPPORTED else fx.DEFAULT
+
+
 def _render(request: Request, name: str, ctx: dict[str, Any]) -> Response:
     templates = request.app.state.templates
     locale = _get_locale(request)
+    currency = _get_currency(request)
     ctx = {
         **ctx,
         "request": request,
         "locale": locale,
+        "default_currency": currency,
+        "currency_symbol": fx.symbol(currency),
+        "currency_supported": fx.SUPPORTED,
         "t": lambda key: i18n.t(locale, key),
         "stages": [s.value for s in Stage],
         "active_stages": [s.value for s in ACTIVE_STAGES],
@@ -179,14 +188,48 @@ def _apply_sort(rows: list[JobRow], sort: str) -> list[JobRow]:
 
 
 def _format_salary(j: Job, locale: str) -> str:
+    """Format the source salary with its native currency prefix (R$, $, €, …)."""
     lo, hi, cur = j.salary_min, j.salary_max, j.currency
     if lo is None and hi is None:
         return "—"
-    currency = cur or ("R$" if locale == "pt_BR" else "$")
+    raw_cur = (cur or "").upper().strip()
+    prefix = fx.symbol(raw_cur) if raw_cur else ("R$" if locale == "pt_BR" else "$")
     if lo is not None and hi is not None and lo != hi:
-        return f"{currency} {lo:,}–{hi:,}"
+        return f"{prefix} {lo:,}–{hi:,}"
     one = hi if lo is None else lo
-    return f"{currency} {one:,}"
+    return f"{prefix} {one:,}"
+
+
+def _format_converted(j: Job, default_currency: str, rates: fx.Rates | None) -> str:
+    """Convert the source salary to `default_currency`. '—' if unconvertible/identical."""
+    lo, hi, cur = j.salary_min, j.salary_max, j.currency
+    if lo is None and hi is None:
+        return "—"
+    if not cur:
+        return "—"
+    cur = cur.upper().strip()
+    if cur == default_currency.upper():
+        return "—"  # same currency — no point repeating the column
+    if rates is None:
+        return "—"
+
+    def _conv(v: int) -> int | None:
+        out = fx.convert(float(v), cur, default_currency, rates)
+        return None if out is None else int(round(out))
+
+    prefix = fx.symbol(default_currency)
+    if lo is not None and hi is not None and lo != hi:
+        lo_c = _conv(lo)
+        hi_c = _conv(hi)
+        if lo_c is None or hi_c is None:
+            return "—"
+        return f"≈ {prefix} {lo_c:,}–{hi_c:,}"
+    one = hi if lo is None else lo
+    assert one is not None
+    one_c = _conv(one)
+    if one_c is None:
+        return "—"
+    return f"≈ {prefix} {one_c:,}"
 
 
 def _get_pair(session: Session, job_id: int) -> tuple[Job, Application]:
@@ -235,10 +278,13 @@ def register(app: FastAPI) -> None:
             )
             sorted_rows = _apply_sort(filtered, sort)
             locale = _get_locale(request)
+            default_currency = _get_currency(request)
+            rates = fx.load_rates(request.app.state.paths)
             view = [
                 {
                     "row": r,
                     "salary": _format_salary(r.job, locale),
+                    "salary_converted": _format_converted(r.job, default_currency, rates),
                 }
                 for r in sorted_rows
             ]
@@ -281,6 +327,8 @@ def register(app: FastAPI) -> None:
 
             report = validate_fit(job)
             locale = _get_locale(request)
+            default_currency = _get_currency(request)
+            rates = fx.load_rates(request.app.state.paths)
             ctx = {
                 "job": job,
                 "application": application,
@@ -289,6 +337,7 @@ def register(app: FastAPI) -> None:
                 "tags": list(_parse_tags(job.tags)),
                 "report": report,
                 "salary": _format_salary(job, locale),
+                "salary_converted": _format_converted(job, default_currency, rates),
             }
             return _render(request, "detail.html", ctx)
 
@@ -533,6 +582,20 @@ def register(app: FastAPI) -> None:
         target = next if next.startswith("/") else "/jobs"
         resp = RedirectResponse(url=target, status_code=303)
         resp.set_cookie("lang", i18n.normalize(lang), max_age=60 * 60 * 24 * 365)
+        return resp
+
+    @app.post("/currency")
+    def set_currency(
+        request: Request,
+        currency: str = Form(...),
+        next: str = Form(default="/jobs"),
+    ) -> Response:
+        normalized = currency.upper().strip()
+        if normalized not in fx.SUPPORTED:
+            normalized = fx.DEFAULT
+        target = next if next.startswith("/") else "/jobs"
+        resp = RedirectResponse(url=target, status_code=303)
+        resp.set_cookie("currency", normalized, max_age=60 * 60 * 24 * 365)
         return resp
 
 

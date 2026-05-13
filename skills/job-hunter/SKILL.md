@@ -2,7 +2,7 @@
 name: job-hunter
 description: "Use this skill when the user asks about job hunting, job applications, scraping job boards, tracking application stages, or filling out job application forms. Triggers include mentions of LinkedIn, Gupy, RemoteOK, Job na Gringa, application tracking, cover letter drafting tied to a tracked job, or any request to apply to a job listing URL. The skill discovers senior mobile / Android / Kotlin Multiplatform openings across BR and international remote markets, tracks each through stages (discovered, queued, applying, applied, screening, technical, behavioral, offer, rejected, withdrawn), and assists with form filling in two modes (shadow and auto) while keeping PII out of model context. Do NOT use for general career advice, resume writing from scratch, or interview coaching unrelated to a tracked job."
 license: Apache-2.0
-version: 0.12.1
+version: 0.12.2
 ---
 
 # job-hunter

@@ -14,6 +14,7 @@
             <th class="px-4 py-2 text-left">{{ t("job.title") }}</th>
             <th class="px-4 py-2 text-left">{{ t("job.location") }}</th>
             <th class="px-4 py-2 text-left">{{ t("job.salary") }}</th>
+            <th class="px-4 py-2 text-left">≈ {{ default_currency }}</th>
             <th class="px-4 py-2 text-left">{{ t("job.stage") }}</th>
             <th class="px-4 py-2 text-left">{{ t("job.posted") }}</th>
             <th class="px-4 py-2 text-right">{{ t("job.actions") }}</th>
@@ -47,6 +48,7 @@
               </td>
               <td class="px-4 py-2.5 text-slate-400">{{ r.job.location or "—" }}</td>
               <td class="px-4 py-2.5 font-mono text-xs text-slate-300">{{ item.salary }}</td>
+              <td class="px-4 py-2.5 font-mono text-xs text-slate-500">{{ item.salary_converted }}</td>
               <td class="px-4 py-2.5">
                 <span class="text-xs px-2 py-0.5 rounded-md bg-slate-800 text-slate-300">{{ t("stage." ~ r.application.current_stage) }}</span>
               </td>

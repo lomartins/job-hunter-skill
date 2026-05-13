@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{{ t("app.title") }}{% block title_suffix %}{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+  <meta name="theme-color" content="#020617" />
   <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
   <script>
     tailwind.config = {
@@ -35,7 +37,17 @@
           </a>
         {% endfor %}
       </nav>
-      <div class="ml-auto">
+      <div class="ml-auto flex items-center gap-2">
+        <form method="post" action="/currency" class="inline-flex">
+          <input type="hidden" name="next" value="{{ request.url.path }}" />
+          <select name="currency"
+                  onchange="this.form.submit()"
+                  class="px-2 py-1 rounded-md text-xs font-mono border border-slate-700 bg-slate-950 text-slate-300 hover:bg-slate-800 cursor-pointer focus:outline-none focus:border-emerald-400/60">
+            {% for cc in currency_supported %}
+              <option value="{{ cc }}" {% if default_currency == cc %}selected{% endif %}>{{ cc }}</option>
+            {% endfor %}
+          </select>
+        </form>
         <form method="post" action="/lang" class="inline-flex">
           <input type="hidden" name="lang" value="{{ 'en' if locale == 'pt_BR' else 'pt_BR' }}" />
           <input type="hidden" name="next" value="{{ request.url.path }}" />

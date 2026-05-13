@@ -452,3 +452,85 @@ def test_description_empty_renders_nothing(
     r = client.get(f"/jobs/{jid}")
     # No description block at all — the heading isn't rendered.
     assert ">Description<" not in r.text and "Descrição" not in r.text
+
+
+# ─── currency selector + conversion ─────────────────────────────────────────
+
+
+def test_set_currency_cookie(client: TestClient) -> None:
+    r = client.post(
+        "/currency", data={"currency": "USD", "next": "/jobs"}, follow_redirects=False
+    )
+    assert r.status_code == 303
+    assert "currency=USD" in r.headers.get("set-cookie", "")
+
+
+def test_set_currency_invalid_falls_back_to_default(client: TestClient) -> None:
+    r = client.post(
+        "/currency", data={"currency": "JPY", "next": "/jobs"}, follow_redirects=False
+    )
+    assert "currency=BRL" in r.headers.get("set-cookie", "")  # DEFAULT
+
+
+def test_currency_column_header_reflects_cookie(
+    client: TestClient, job_hunter_home: Path
+) -> None:
+    _insert_job(
+        job_hunter_home, title="X", company="Y", salary_min=100000, currency="USD"
+    )
+    client.cookies.set("currency", "BRL")
+    r = client.get("/jobs")
+    assert "≈ BRL" in r.text
+
+
+def test_salary_uses_currency_symbol(client: TestClient, job_hunter_home: Path) -> None:
+    """The native salary column shows the source-currency symbol (R$, $, €)."""
+    _insert_job(
+        job_hunter_home, title="Local", company="X", salary_min=120000, currency="BRL"
+    )
+    _insert_job(
+        job_hunter_home, title="Remote", company="Y", salary_min=80000, currency="USD"
+    )
+    r = client.get("/jobs")
+    assert "R$ 120,000" in r.text
+    assert "$ 80,000" in r.text
+
+
+def test_converted_column_renders_with_mocked_rates(
+    client: TestClient, job_hunter_home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With fixed rates, a 100k USD posting converts to a deterministic BRL value."""
+    from job_hunter.webapp import fx
+
+    fixed = fx.Rates(
+        base="EUR",
+        fetched_at=datetime.now(UTC),
+        rates={"EUR": 1.0, "USD": 1.07, "BRL": 5.5},
+    )
+    monkeypatch.setattr(fx, "load_rates", lambda *a, **kw: fixed)
+
+    _insert_job(
+        job_hunter_home, title="X", company="Y", salary_min=100000, currency="USD"
+    )
+    client.cookies.set("currency", "BRL")
+    r = client.get("/jobs")
+    # 100,000 USD / 1.07 * 5.5 ≈ 514,019. Allow a 2-digit fuzz on the conversion.
+    assert "≈ R$" in r.text
+    assert "514,01" in r.text or "514,02" in r.text
+
+
+def test_converted_column_dash_when_same_currency(
+    client: TestClient, job_hunter_home: Path
+) -> None:
+    _insert_job(
+        job_hunter_home, title="X", company="Y", salary_min=120000, currency="BRL"
+    )
+    client.cookies.set("currency", "BRL")
+    r = client.get("/jobs")
+    body = r.text[r.text.find('id="joblist"'):]
+    # Same-currency row should not render an "≈ R$ …" segment in its row.
+    # We check the *row*, not the header label.
+    row_start = body.find("R$ 120,000")
+    row_end = body.find("</tr>", row_start)
+    row = body[row_start:row_end]
+    assert "≈ R$" not in row
